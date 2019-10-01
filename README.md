@@ -8,7 +8,7 @@ The purpose of an Invenio RFC (Request For Comments) is to:
 
 Many changes can be implemented via the normal GitHub pull request workflow
 (bug fixes and improvements), however some changes are "substantial" and we ask
-that these are written up as an RFC.
+that these are written up as a RFC.
 
 RFCs are per product:
 
@@ -30,7 +30,7 @@ change could be:
 - Changing existing features/APIs.
 - Changes of design patterns, idiomatic usage or conventions.
 
-You do not need an RFC for:
+You do not need a RFC for:
 
 - Modules/features you develop privately (you only need it, if you want it as
   an official Invenio module).
@@ -49,7 +49,8 @@ If in doubt, just ask on [Gitter](http://gitter.im/inveniosoftware/invenio).
 
 ### Process (WIP)
 
-The decision process on RFCs have not yet been decided. Ideas is very welcome.
+The decision process on RFCs have not yet been decided. Ideas is very welcome
+(write them on https://github.com/inveniosoftware/rfcs/issues/1).
 
 ---
 
