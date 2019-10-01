@@ -49,8 +49,12 @@ If in doubt, just ask on [Gitter](http://gitter.im/inveniosoftware/invenio).
 
 ### Process (WIP)
 
-The decision process on RFCs have not yet been decided. Ideas is very welcome
-(write them on https://github.com/inveniosoftware/rfcs/issues/1).
+The decision process on RFCs have not yet been decided. The plan is to gain
+practical experience from the Invenio RDM project and decide on a process by
+latest July 2020.
+
+Ideas is very welcome (write them on
+https://github.com/inveniosoftware/rfcs/issues/1).
 
 ---
 
