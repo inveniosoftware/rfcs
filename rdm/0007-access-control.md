@@ -11,23 +11,23 @@ Overall design for management of access control and permissions over resources i
 ## Motivation
 
 - As an administrator, I want to have both public and restricted records, so that not all the records are publicly visible.
-- As a user, I want to restrict access to files in a public record, so that I can safely store and cite my dateset.
+- As a user, I want to restrict access to files in a public record, so that I can safely store and cite my dataset.
 - As a user, I want to restrict files and/or metadata during an embargo period, so that I can comply with publisher rules.
 - As an administrator, I want to have a flexible and easy way of defining access control policies, so that I do not need to code them.
 - As an administrator, I want to have IP-based access-control, so that I can comply with publisher rules.
-- As a user, I want to be able to obtain a sharable link, so that my colleagues can access the files of my restricted record.
-- As an administrator, I want to easily define roles like *academic stuff* based on my IdP (Identity Provider), so that I can implement bussiness rules.
+- As a user, I want to be able to obtain a shareable link, so that my colleagues can access the files of my restricted record.
+- As an administrator, I want to easily define roles like *academic staff* based on my IdP (Identity Provider), so that I can implement business rules.
 - As a user, I want to share a preview of a deposit record prior to publishing it, so that my colleagues can validate it.
 - As a user, I want to grant access to my restricted records by listing specific users and/or groups, so that I can easily revoke the access if needed.
 - As an administrator, I want to predefine roles, so that I can easily keep QA and production accurately reflect each other??
-- As an administrator, I want to restrict access to certain records based on user features (e.g. registered user, member of a specific community, member of academia), so that I can implement my institutions policies.
+- As an administrator, I want to restrict access to certain records based on user features (e.g. registered user, member of a specific community, member of academia), so that I can implement my institution's policies.
 - As a user, I want to access my data even after I have left my university.
 - As an administrator, I want to open my repositories for other institutions and their IDMS (?? Institutional Data Management System).
 
 ## Terminology
 
 - **Resources**: The term resource in the system represents anything you want to protect. Resources can both be at the object-level (e.g. access to a record) or of more general nature (e.g access to the administration interface).
-Actions: Resources can be protected by requiring the ability to perform one or more actions. 
+- **Actions**: Resources can be protected by requiring the ability to perform one or more actions.
 - **Subjects**: Access to resources can be granted to *subjects*, which include users, roles and system roles. System roles are roles that are programmatically assigned to users. For example:
     - Authenticated user: any logged in user.
     - Any user: both authenticated and anonymous users.
@@ -40,7 +40,7 @@ Invenio implements a Role-Based Access Control system (RBAC), that can be used t
 
 ### Records as resources
 
-The most complex access rights use cases in Invenio RDM are related to records. Note that the following access control can be different between records and deposit records. In addition, this access control model is not tight to Invenio RDM, so it can be applied to any data model in Invenio.
+The most complex access rights use cases in Invenio RDM are related to records. Note that the following access control can be different between records and deposit records. In addition, this access control model is not tied to Invenio RDM, so it can be applied to any data model in Invenio.
 
 **Record actions**
 
@@ -88,9 +88,9 @@ RecordOwner:
         pass
 ```
 
-Since the record owner does not set any specific blacklist (*exclude*), the generator would result in an access granted for users with id 1, 2 or 3.
+Since the record owner does not set any specific blacklist (*excludes*), the generator would result in an access granted for users with id 1, 2 or 3.
 
-In addition, generators resturn a set of *query filters*, which are used only when searching. The set of rules returned there are in the form of an Elasticsearch Query object. The `RecordOwner` generator would therefore look like:
+In addition, generators return a set of *query filters*, which are used only when searching. The set of rules returned there are in the form of an Elasticsearch Query object. The `RecordOwner` generator would therefore look like:
 
 ``` python
 RecordOwner:
@@ -114,7 +114,7 @@ Invenio RDM comes with a set of predefined generators:
 
 **Permission Policies**
 
-A *permission policy* defines the set of generators upon which a certain action can be performed. A record policy would be set as:
+A *permission policy* defines the actions and who can or cannot perform them as generators. A record policy would be set as:
 
 ``` python
 RecordPermissionPolicy:
@@ -133,7 +133,7 @@ For the following user story:
 As an admin I want to grant read access to the owners of a document, except if the owner is part of team A.
 ```
 
-The following policy applies the `RecordOwner` and `TeamMembership` generators to the record read action. The `RecordOwner` generator, allows the owners of the document (defined right above it, with ids 1, 2 and 3) to access the document. On the other hand, `TeamMembershipt` blacklists users belonging to Team A of accesing the document.
+The following policy applies the `RecordOwner` and `TeamMembership` generators to the record read action. The `RecordOwner` generator, allows the owners of the document (defined right above it, with ids 1, 2 and 3) to access the document. On the other hand, `TeamMembership` blacklists users belonging to Team A.
 
 ``` python
 Document:
@@ -146,7 +146,7 @@ RecordOwner:
     needs:
         return Document._owners
 
-TeanMembership:
+TeamMembership:
     needs:
         pass
     excludes:
@@ -181,7 +181,6 @@ Keep using the current model where every instance has to implement their own usi
 
 ## Unresolved questions
 
-- Shall we implement *campus user* system role? It would require some sort of IP treatment.
 - Update and Delete actions over files, are iherited from the associated record. Or are per file?
 - Deposit Edit vs Record update?
 - Is *query filters* a good name?
@@ -189,34 +188,3 @@ Keep using the current model where every instance has to implement their own usi
 - Is the example with Team A being blacklisted clear? I was thinking for example of ATLAS vs. CMS not allowing each other to access their research (for mission purposes.)
 - Curator vs Supercurator? Where is the line? Community vs Global curator?
 - Are the commented examples good for here? or should they go to the module/RDM docs. (See below)
-
-<!-- **Example**
-A bibliographic record in the current Zenodo would have the following access control defined:
-Can list/read: any user
-Can read files: any user if public, owners, super curators
-Can create/update/delete/create files/update files/delete files: deny
-Can administrate files - super curators
-Above demonstrates that all records in Zenodo are public, but that files can be restricted if the record defines them as such. Also, super curators have the ability to administrate files such as fixing records.
-A deposit record in the current Zenodo would have the following access control defined (all authenticated users are allowed to create new uploads):
-Can list/create: authenticated user
-Can read: owners, super curators
-Can create/read/update/delete files: any user if public, owners, super curators
-Can edit
-
-Can update: deny
-
-**Advanced example**
-
-Record metadata
-The record metadata
-Records exists either has
-Public or restricted records.
-Public or restricted files associated with records
-
-Once published, files cannot be edited, only via special permission.
-Principle: Actions define ability to do something.
-Subjects
-System roles: Any user, authenticated user
-Superuser
-Invenio defines a special action
-Restricting access to fields -->
