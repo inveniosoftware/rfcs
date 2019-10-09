@@ -25,6 +25,14 @@ implementation to implement. This should get into specifics and corner-cases,
 and include examples of how the feature is used. Any new terminology should be
 defined here.
 
+
+## Example
+
+> Show a concrete example of what the RFC implies. This will make the consequences
+of adopting the RFC much clearer.
+
+> As with other sections, use it if it makes sense for your RFC.
+
 ## How we teach this
 
 > What names and terminology work best for these concepts and why? How is this
