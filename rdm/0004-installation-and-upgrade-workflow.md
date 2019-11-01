@@ -54,7 +54,7 @@ The resulting file structure is as follows:
 
 The `build` command should allow to build two types of environments: development (`--dev`) and semi-production (`--prod`). Development is the default environment.
 
-Regardless of the environment type, the first step of the build process is to lock the application dependencies. Therefore, by using Pipenv, the CLI will generate a *lock* file that would contain the version and hash identifier of each dependency. For this use case the flags ``--lock`` or ``--skip-lock`` are used, `--lock` being the default.
+Regardless of the environment type, the first step of the build process is to lock the application dependencies. Therefore, by using Pipenv, the CLI will generate a *lock* file that would contain the version and hash identifier of each dependency. For this use case the flags ``--lock`` or ``--skip-lock`` are used, `--lock` being the default. In case that alpha releases need to be installed, the ``--pre`` flag is provided.
 
 The *development* environment would run the application using Flask's debug server and connect to the cache, database, queueing and elasticsearch services running in their corresponding containers. In this case both UI and REST applications would run in the same application.
 
