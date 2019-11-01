@@ -47,8 +47,8 @@ The resulting file structure is as follows:
 - `Dockerfile.base`: Description of the process to install the Python dependencies.
 - `Dockerfile`: Description of the process to create the application image.
 - `docker-services.yml`: Contains the description of the containers for all needed services.
-- `docker-compose.yml`: Contains the service components architecture and orchestration for a semi-production deployment. It uses the services described in the `docker-services.yml` file.
-- `docker-compose.dev.yml`: Contains the service components architecture and orchestration for a development deployment. It uses the services described in the `docker-services.yml` file.
+- `docker-compose.yml`: Contains the service components architecture and orchestration for a development deployment. It uses the services described in the `docker-services.yml` file.
+- `docker-compose.full.yml`: Contains the service components architecture and orchestration for a semi-production deployment. It uses the services described in the `docker-services.yml` file.
 
 **build**
 
