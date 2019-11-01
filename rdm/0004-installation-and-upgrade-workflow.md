@@ -58,7 +58,7 @@ Regardless of the environment type, the first step of the build process is to lo
 
 The *development* environment would run the application using Flask's debug server and connect to the cache, database, queueing and elasticsearch services running in their corresponding containers. In this case both UI and REST applications would run in the same application.
 
-The *semi-production* environment is more complex. It runs the web UI and RESTful API in separate containers, and exposes them by using a Nginx frontend. In this scenario both the base and application images must be built. However, in cases such as updating the application the dependencies might not change, and therefore there is no need to rebuild the base image. To make this possible the flags `--base` and `--app` are used.
+The *semi-production* environment is more complex. It runs the web UI and RESTful API in separate containers, and exposes them by using a Nginx frontend. In this scenario both the base and application images must be built. However, in cases such as updating the application the dependencies might not change, and therefore there is no need to rebuild the base image. To make this possible the flags `--base` and `--app` are used. Both builds can be skipped with ``--skip-base`` and ``--skip-app`` respectively. This would allow, for instance, to rebuild only the application container when assets have changed (but not dependencies).
 
 Note that the `build` command only builds the images, it does not start the containers.
 
