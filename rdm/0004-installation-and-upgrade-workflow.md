@@ -40,15 +40,18 @@ The `init` command would initialize the files and folders structure, resulting i
 
 The resulting file structure is as follows:
 
-- `invenio.cfg`: Contains all the configuration variables.
-- `pipenv`: Contains the python dependencies along with each corresponding version.
+- `docker/`: Contains the services' Dockerfiles
+- `docker-compose.yml`: Defines the services and their orchestration for a development deployment. It relies on the `docker-services.yml` file.
+- `docker-compose.full.yml`: Defines the services and their orchestration for a semi-production deployment. It relies on the `docker-services.yml` file.
+- `Dockerfile`: Defines the process to create the application image.
+- `Dockerfile.base`: Defines the process to create the Python dependencies image.
+- `docker-services.yml`: Defines the containers for all needed services.
+- `invenio.cfg`: Contains the overridden configuration variables.
+- `Pipfile`: Contains the python dependencies along with their required version(s).
+- `README.rst`: Contains a placeholder README text
 - `static/`: Contains all the CSS and potential static content (e.g. images).
 - `templates/`: Contains the custom templates.
-- `Dockerfile.base`: Description of the process to install the Python dependencies.
-- `Dockerfile`: Description of the process to create the application image.
-- `docker-services.yml`: Contains the description of the containers for all needed services.
-- `docker-compose.yml`: Contains the service components architecture and orchestration for a development deployment. It uses the services described in the `docker-services.yml` file.
-- `docker-compose.full.yml`: Contains the service components architecture and orchestration for a semi-production deployment. It uses the services described in the `docker-services.yml` file.
+
 
 **build**
 
