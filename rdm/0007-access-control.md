@@ -6,23 +6,29 @@
 
 ## Summary
 
-Overall design for management of access control and permissions over resources in Invenio RDM.
+Overall design for management of access control and permissions over resources in Invenio RDM. Due to the need of more fine-grained permission policies, the chosen model is ABAC (Attribute Based Access Control).
+
+### Why is this needed
+
+The current implementation (November 2019) requires the re-implementation of full permission factories in order to customize access control. Moreover, it is not clear across implementations if the factories should return a set of needs or simply over-write the `can` function. In the latter and most common does not leverage the whole power of *Flask-Principal*. Therefore, a change of paradigm is needed in order to make access control customizations simple and consistent.
 
 ## Motivation
 
+### Administrator:
 - As an administrator, I want to have both public and restricted records, so that not all the records are publicly visible.
-- As a user, I want to restrict access to files in a public record, so that I can safely store and cite my dataset.
-- As a user, I want to restrict files and/or metadata during an embargo period, so that I can comply with publisher rules.
 - As an administrator, I want to have a flexible and easy way of defining access control policies, so that I do not need to code them.
 - As an administrator, I want to have IP-based access-control, so that I can comply with publisher rules.
-- As a user, I want to be able to obtain a shareable link, so that my colleagues can access the files of my restricted record.
 - As an administrator, I want to easily define roles like *academic staff* based on my IdP (Identity Provider), so that I can implement business rules.
-- As a user, I want to share a preview of a deposit record prior to publishing it, so that my colleagues can validate it.
-- As a user, I want to grant access to my restricted records by listing specific users and/or groups, so that I can easily revoke the access if needed.
-- As an administrator, I want to predefine roles, so that I can easily keep QA and production accurately reflect each other??
 - As an administrator, I want to restrict access to certain records based on user features (e.g. registered user, member of a specific community, member of academia), so that I can implement my institution's policies.
+- As an administrator, I want to give access my repositories for other institutions and their IDMS (?? Institutional Data Management System).
+
+### User:
+- As a user, I want to restrict access to files in a public record, so that I can safely store and cite my dataset without giving access to files.
+- As a user, I want to restrict files and/or metadata during an embargo period, so that I can comply with publisher rules.
+- As a user, I want to be able to obtain a shareable link, so that my colleagues can access the files of my **restricted record**.
+- As a user, I want to share a preview of a **deposit** record prior to publishing it, so that my colleagues can validate it.
+- As a user, I want to grant access to my restricted records by listing specific users and/or groups, so that I can easily revoke the access if needed.
 - As a user, I want to access my data even after I have left my university.
-- As an administrator, I want to open my repositories for other institutions and their IDMS (?? Institutional Data Management System).
 
 ## Terminology
 
@@ -60,7 +66,7 @@ Records linked with files (possible for all records) have the additional followi
 
 Deposit records have the additional following actions:
 - Publish: Ability to publish a new record.
-- Edit: Ability to edit an already published record. This differs from the record update action.
+- Edit: Ability to edit an unpublished record. This differs from the record update action.
 - New version: Ability to create a new version of an existing record.
 
 It is possible to extend this model with more actions for each data model as needed.
