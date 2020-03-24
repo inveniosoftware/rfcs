@@ -1,6 +1,7 @@
 - Start Date: YYYY-MM-DD
 - RFC PR: [#<PR>](https://github.com/inveniosoftware/rfcs/pull/<PR>)
 - Authors:
+- State: DRAFT
 
 # <RFC title>
 
