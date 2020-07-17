@@ -3,7 +3,7 @@
 - Authors: Lars Holm Nielsen, Zach Zacharodimos
 - State: DRAFT
 
-# REST API error responses in Invenio
+# Error handling principles for REST API error responses in Invenio
 
 ## Summary
 
@@ -13,8 +13,13 @@ Error response bodies are not subject to content negotiation and  thus always JS
 
 Clear and consistent error handling throughout Invenio REST APIs is highly important for the clients accessing our REST APIs, as well as for properly logging errors and tracking errors. It's further important for a clean code architecture.
 
-
 ## Detailed design
+
+### Scope
+
+The RFC is about general error handling principles in Invenio-based applications focusing primarily on the REST APIs. It's documenting the reasoning and high-level implementation of error handling in Invenio. It's not supposed to be prescriptive about how users of Invenio Framework would like to do their error handling, only about the approach used in Invenio modules and applications. There might be good reasons to diverge from the general principles in specific cases. However, when diverging it's important to cross-check with this RFC, to understand why it's necessary to diverge, and what are the implications.
+
+### Content negotiation in Invenio REST API
 
 The Invenio REST APIs makes use of HTTP Content Negotiation in order to render a record in multiple different formats.
 
@@ -87,15 +92,15 @@ Content-Type: application/json
 
 At a theoretical level, the above example may seem logical that a client requests XML, and gets an error response in XML. However for other formats, this becomes less clear. For instance, some formats may not easily encode errors - e.g. how would an error response look like for CSV or BibTeX?
 
-Similar, at an architecture-level, an application deals with a wide range of errors, and decoupling the error from the serialization of the response body, means that we need very clear definition of errors so that the error serializers have a limited set of errors as input to deal with, otherwise it becomes and overwhelming task to write an error serializer. Currently, this does not seem feasible in Invenio code base.
+Similar, at an architecture-level, an application deals with a wide range of errors, and decoupling the error from the serialization of the response body, means that we need very clear definition of errors so that the error serializers have a limited set of errors as input to deal with, otherwise it becomes an overwhelming task to write an error serializer. Currently, this does not seem feasible in Invenio code base.
 
 Also, at an architecture-level, errors may come from many sources, . Take e.g. a 404 Not Found error. This one can come from the service layer or from the Flask routing layer. This would mean error handling would need to be global for the application in order to have consistent serialization of both errors.
 
-At a client-level, the most important is having a machine-readable format for the error, and especially it's important for Single-Page applications in order to display errors. The response will always have a content type defined, and thus it's reasonable striaghtforward to handle errors in a different format that what was requested, especially if it is only for errors.
+At a client-level, the most important is having a machine-readable format for the error, and especially it's important for Single-Page applications in order to display errors. The response will always have a content type defined, and thus it's reasonable straightforward to handle errors in a different format that what was requested, especially if it is only for errors.
 
 **Error response without content negotiation (example 2)**
 
-Having only a single response format for errors simplifies all of above mentioned issues with the content negotiation. Serializers needs only to deal with how to serialize a successful response and not a pletora of errors, and thus becomes easier to write. Having only one format, means errors can easily be generated from multiple different sources and produce the same error (e.g. 404 from service vs routing layer), and clients can easily decode errors and know it's always the same format.
+Having only a single response format for errors simplifies all of above mentioned issues with the content negotiation. Serializers needs only to deal with how to serialize a successful response and not a plethora of errors, and thus becomes easier to write. Having only one format, means errors can easily be generated from multiple different sources and produce the same error (e.g. 404 from service vs routing layer), and clients can easily decode errors and know it's always the same format.
 
 Because of above reasons, it means that *error response bodies are not subject to content negotiation and thus always JSON formatted*
 
@@ -103,7 +108,7 @@ Because of above reasons, it means that *error response bodies are not subject t
 
 Having established that error response are not subject to content negotiation, the next question is who is responsible for rendering the HTTP response body for an error.
 
-As a prerequisite, please see [error handling in Flask](https://flask.palletsprojects.com/en/1.1.x/errorhandling/#error-handlers).
+IMPORTANT: As a prerequisite, please read [error handling in Flask](https://flask.palletsprojects.com/en/1.1.x/errorhandling/#error-handlers).
 
 **Sources of errors**
 
@@ -139,7 +144,7 @@ The issue with view layer error handling is that only errors from the view and s
 Example of a 404 error:
 
 1. A routing error will result in a 404 error from the Flask layer.
-2. An object that doesn't exists in the database, will likely result in a 404 error from the service layer.
+2. An object that doesn't exist in the database, will likely result in a 404 error from the service layer.
 
 A view layer can only catch the latter. Thus, if we render an error response in the view, we still have to deal with error response for Flask layer errors.
 
@@ -150,7 +155,7 @@ Flask and Werkzeug's request dispatching system will catch all errors happening 
 First, Flask will look for a user-provided error handler. If found, the handler is responsible for making a response. If not found, but the exception is an HTTPException (or subclass thereof), the HTTPException will simply be returned, because an HTTPException can self-render. If it's not an HTTPException, the error is simply reraised and results in an Internal Server Error. The following pseudo-code is an example of the handling:
 
 ```python
-def handle_exception(e):
+def handle_user_exception(e):
     # If it's an HTTPException, use different method:
     if isinstance(e, HTTPException):
         return handle_http_exception(e)
@@ -175,7 +180,7 @@ The key in understanding the difference between an normal exception and an HTTPE
 
 **Recap**
 
-Source of errors (exceptions raised) is three layers (Flask, View, Service). For handling these errors (i.e. making an HTTP error response) we can use Flask and Werkzeug's error handling system. The view layer is not well-suited for this.
+Source of errors (exceptions raised) is three layers (Flask, View, Service). For handling these errors (i.e. making an HTTP error response) we can use Flask and Werkzeug's error handling system. The view layer is not well-suited for this because it doesn't catch all errors.
 
 Above basically establish that either
 
@@ -184,7 +189,7 @@ Above basically establish that either
 
 ### Error handling in Flask REST API applications
 
-Following is a proposal for how to implement the error handling in REST API application
+Following is a proposal for how to implement the error handling in REST API **application**:
 
 **JSON-formatted HTTP Exception**
 
@@ -236,7 +241,7 @@ error_map = {
 }
 
 # Install handlers on blueprints.
-def register_error_map(blueprint, error_map)
+def register_error_map(blueprint, error_map):
     for exc_or_code, handler in error_map.items():
         blueprint.register_error_handler(exc_or_code, handler)
 ```
@@ -298,7 +303,7 @@ Invenio-REST currently defines a ``RESTException`` which is similar to ``HTTPJSO
 
 In principle there's no problem in having both RESTException and HTTPJSONException as this is one of the strengths of the approach. That code in other modules can dependent on different implementations, but still produce the same error response to a client. This ensures better isolation of code.
 
-\**Blueprint error handlers**
+**Blueprint error handlers**
 
 These will be implemented in the Flask-Resources.
 
