@@ -1,7 +1,7 @@
 - Start Date: 2020-03-24
 - RFC PR: [#19](https://github.com/inveniosoftware/rfcs/pull/19)
 - Authors: Lars Holm Nielsen
-- State: DRAFT
+- State: IMPLEMENTED
 
 # Localization of Extended Date Time Format (EDTF)
 
@@ -9,6 +9,10 @@
 
 EDTF allows you to record imprecise dates. This RFCs deals mainly with the
 localization of imprecise dates.
+
+# Status
+
+The core of the RFC has been implemented in https://github.com/inveniosoftware/babel-edtf.
 
 ## Motivation
 
