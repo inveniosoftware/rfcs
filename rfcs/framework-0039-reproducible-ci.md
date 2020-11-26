@@ -80,9 +80,9 @@ In this file we have to add two lines: one at the beginning ot boot up the
 services and one at the end to shut them down. For example:
 
 ```bash
-docker-compose-cli up es postgresql redis
 pydocstyle...
 isort...
+docker-services-cli up es postgresql redis
 pytest
 tests_exit_code=$?
 docker-services-cli down
