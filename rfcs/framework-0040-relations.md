@@ -43,7 +43,7 @@ The issues with this approach are:
 
 - Technically diffcult to understand and debug because of the resolving magic happening behind the scenes. A special library, catches requests to special URLs, and translates them into database queries. This is non-intuitive and very difficult to trace when it's not working as expected.
 - Lack of fine grained control. It is not easily possible to control which fields from the referenced record is included. For instance, a biblographic record relates to a grant record that relates to a funder record. All three records will be dereferenced, causing the index JSON to become very big.
-- Security/performance - because JSONRef is based on making HTTP requests, there's a risk that badly formed URLs, will cause HTTP requests to be made. At best this will only cause performance issues, at worst it opens a backdoor for injecting content in the JSON document. While this could also be considered a feature, ability to relate to externally hosted records, we think the performance/security issues makes this technically impossible.
+- Security/performance - because JSONRef is based on making HTTP requests, there's a risk that badly formed URLs, will cause HTTP requests to be made. At best this will only cause performance issues, at worst it opens a backdoor for injecting content in the JSON document. While this could also be considered a feature, ability to relate to externally hosted records, we think the performance/security issues makes this undesirable.
 
 
 ## Design
@@ -70,7 +70,7 @@ We propose the following syntax:
 }
 ```
 
-A relation is an object with a single key ``id`` with a string value for a persistent identifier for the related record.
+A relation is an object with an ``id`` key whose value is the persistent identifier of the related record as a string.
 
 A relation is considered dereferenced if it contains more than one key.
 
@@ -78,7 +78,7 @@ The syntax was chosen for a number of reasons:
 
 - We would like to avoid confusion with JSONRef as it is already implemented in Invenio, and will work differently than JSONRef.
 - We would like a syntax that can be used both in the internal JSON document stored in the database, as well as in the external JSON used in the REST API.
-- By using an object we can easily dereference it. I.e. ``{"id": "..."}`` is dereferenced to ``{"id": "...", "key1": "val1", ...}``. The key ``id`` always exists (unlike e.g. when using JSONRef).
+- By using an object we can easily dereference it i.e. ``{"id": "..."}`` is dereferenced to ``{"id": "...", "key1": "val1", ...}``. The key ``id`` always exists (unlike e.g. when using JSONRef).
 - Relations should be to a persistent identifier for the related record to make the relation as stable as possible. Also, we wanted to avoid having mulit-key objects as possible persistent identifiers to ensure APIs could be as standardized as much as possible.
 - We did not want to include e.g. type information for the related record, to keep the JSON small as well as keep the type information on the field definition itself, instead of inside the referenced object.
 
@@ -143,7 +143,7 @@ Due to the cardinality and concurrency issues, the database should always only s
 
 All records have a version counter for optimistic concurrency control. Thus, if everytime we dereference a relation we also store the version counter of the referenced record, we will be able to reliably detect which records must be dereferenced again.
 
-As searches a likely to happen in Elasticsearch, we suggest to make a single compound key
+As searches are likely to happen in Elasticsearch, we suggest to make a single compound key.
 
 We suggest adding a ``@v`` key in the *dereferenced data* (not in the database) that includes the version counter of the referenced record:
 
@@ -151,7 +151,7 @@ We suggest adding a ``@v`` key in the *dereferenced data* (not in the database) 
 {"id": "1234", "@v": 18, "a": ""}
 ```
 
-It should be investigated if this if sufficient in order to proper queries in Elasticsearch. Alternatively, we will need to create a compound key concatenating the id and the version - for instance:
+It should be investigated if this if sufficient in order to generate proper queries in Elasticsearch. Alternatively, we will need to create a compound key concatenating the id and the version - for instance:
 
 ```json
 {"id": "1234", "@v": "v18:1234", "a": ""}
@@ -167,7 +167,7 @@ Note, we cannot replace the ``id`` key, as it must be stable between the normali
 
 Relations could be defined by a new system field named ``RelationsField``. The reason for using the name "relations" is to avoid confusion with REST API HATEOS links in the responses.
 
-```pythton
+```python
 class Record(RecordBase):
     relations = RelationsField(
         resource_type=PIDRelation('metadata.resource_type', ResourceTypeRecord.pid),
@@ -195,7 +195,7 @@ However, this will make it a bit more diffcult to operate on all relations at on
 
 ##### Limiting attributes
 
-Limting the attributes could be done as:
+Limiting the attributes could be done as:
 
 ```python
 PIDRelation('metadata.resource_type', ResourceTypeRecord.pid, attrs=[
