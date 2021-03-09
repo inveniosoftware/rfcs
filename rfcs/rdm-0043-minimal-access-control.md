@@ -1,5 +1,5 @@
 - Start Date: 2021-02-03
-- RFC PR: [#43>](https://github.com/inveniosoftware/rfcs/pull/43)
+- RFC PR: [#43](https://github.com/inveniosoftware/rfcs/pull/43)
 - Authors: Lars Holm Nielsen
 - State: IMPLEMENTED
 
