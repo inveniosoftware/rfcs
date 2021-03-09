@@ -1,7 +1,7 @@
 - Start Date: 2021-02-03
-- RFC PR: [#<PR>](https://github.com/inveniosoftware/rfcs/pull/<PR>)
+- RFC PR: [#43>](https://github.com/inveniosoftware/rfcs/pull/43)
 - Authors: Lars Holm Nielsen
-- State: DRAFT
+- State: IMPLEMENTED
 
 # Minimal access control for InvenioRDM
 
