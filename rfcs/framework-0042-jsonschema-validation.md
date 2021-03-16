@@ -203,13 +203,13 @@ The current registry uses an identifier for registering a schema based on the ``
 For instance instead of:
 
 ```
-{JSONSCHEMA_HOST}/schemas/records-record-v1.0.0.json
+{JSONSCHEMA_HOST}/schemas/records/record-v1.0.0.json
 ```
 
 we would use:
 
 ```
-local://records-record-v1.0.0.json
+local://records/record-v1.0.0.json
 ```
 
 Alos, we should validate that the schema's ``$id`` keyword matches the URI (e.g. ``local://records-record-v1.0.0.json``) under which we register it.
