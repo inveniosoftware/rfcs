@@ -35,6 +35,9 @@ The best practices described in the paper are an output of the Force11 DCIP proj
 
 Most of the recommendations are implemented by invenioRDM, two of them by using DataCite DOIs. What is missing is mainly documentation for end users, and proper handling of givenName and familyName, which creates issues with citation and bibtex formatting. HTTP link headers is an optional feature that could be added.
 
+> The following is the recommendation for documentation:
+> The repository must provide documentation about how data should be cited, how metadata can be obtained, and who to contact for more information. This documentation should follow the recommendations in this document, the DCIP Data Citation Primer20, community recom- mendations provided by a number of organizations, but should also address the specifics of that particular data repository.
+
 | No  | Label                           | Status                                                                                                          |
 | --- | ------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | 1   | Persistent identifier           | Implemented by using DataCite DOIs.                                                                             |
@@ -46,7 +49,7 @@ Most of the recommendations are implemented by invenioRDM, two of them by using 
 | 7   | Schema.org/json-ld              | Implemented. Should add support for givenName and familyName.                                                   |
 | 8   | HTML meta tags                  | Implemented.                                                                                                    |
 | 9   | BibTeX                          | Implemented. Names are not formatted correctly (should John Doe not Doe, John).                                 |
-| 10  | Content negotiation             | Implemented by using DataCite DOIs.                                                                             |
+| 10  | Content negotiation             | Implemented by using DataCite DOIs. Consider implementing in the invenioRDM API.                                |
 | 11  | HTTP link headers               | Not yet implemented.                                                                                            |
 
 ## Example
