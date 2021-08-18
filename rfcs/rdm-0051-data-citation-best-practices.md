@@ -13,7 +13,7 @@ Fenner, M., Crosas, M., Grethe, J. S., Kennedy, D., Hermjakob, H., Rocca-Serra, 
 
 ## Motivation
 
-The best practices described in the paper are an output of the Force11 DCIP project and reflect the thinking of a broad community of data repositories and other actors (with a focus on life sciences because of the grant funding by NIH).
+The best practices described in the paper are an output of the [Force11 DCIP project](https://www.force11.org/group/dcip) and reflect the work of a broad community of data repositories and other actors (with a focus on life sciences because of the grant funding by NIH).
 
 ## Detailed design
 
@@ -33,7 +33,7 @@ The best practices described in the paper are an output of the Force11 DCIP proj
 
 ### Implementation status
 
-Most of the recommendations are implemented by invenioRDM, two of them by using DataCite DOIs. What is missing is mainly documentation for end users, and proper handling of givenName and familyName, which creates issues with citation and bibtex formatting. HTTP link headers is an optional feature that could be added.
+Most of the recommendations are implemented by invenioRDM, two of them by using DataCite DOIs. What is missing is mainly documentation for end users, and proper handling of givenName and familyName, which creates issues with citation and bibtex formatting. HTTP link headers is a nice optional feature that should be added.
 
 The following is the recommendation for documentation:
 
@@ -85,4 +85,4 @@ The following is the recommendation for documentation:
 
 ## Resources/Timeline
 
-> Which resources do you have available to implement this RFC and what is the overall timeline?
+We have resourced five weeks of work to implement these recommendations. Given the current implementation status this is achievable, and the work should be completed by October 2021.
