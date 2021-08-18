@@ -7,7 +7,9 @@
 
 ## Summary
 
-Implement the 11 data citation best practices as described in [Fenner et al. 2019](https://doi.org/10.1038/s41597-019-0031-8) in invenioRDM.
+Implement the 11 data citation best practices as described in Fenner et al. 2019 in invenioRDM.
+
+Fenner, M., Crosas, M., Grethe, J. S., Kennedy, D., Hermjakob, H., Rocca-Serra, P., … Clark, T. (2019). A data citation roadmap for scholarly data repositories. Scientific Data, 6(1). https://doi.org/10.1038/s41597-019-0031-8
 
 ## Motivation
 
@@ -15,7 +17,7 @@ The best practices described in the paper are an output of the Force11 DCIP proj
 
 ## Detailed design
 
-### Guidelines for repositories (1-5 required, 6-9 recommended, 10-11 optional, from https://doi.org/10.1038/s41597-019-0031-8)
+### Guidelines for repositories (1-5 required, 6-9 recommended, 10-11 optional)
 
 1. All datasets intended for citation must have a globally unique persistent identifer that can be expressed as an unambiguous URL.
 2. Persistent identifers for datasets must support multiple levels of granularity, where appropriate.
@@ -31,6 +33,8 @@ The best practices described in the paper are an output of the Force11 DCIP proj
 
 ### Implementation status
 
+Most of the recommendations are implemented by invenioRDM, two of them by using DataCite DOIs. What is missing is mainly documentation for end users, and proper handling of givenName and familyName, which creates issues with citation and bibtex formatting. HTTP link headers is an optional feature that could be added.
+
 | No  | Label                           | Status                                                                                                          |
 | --- | ------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | 1   | Persistent identifier           | Implemented by using DataCite DOIs.                                                                             |
@@ -42,7 +46,7 @@ The best practices described in the paper are an output of the Force11 DCIP proj
 | 7   | Schema.org/json-ld              | Implemented. Should add support for givenName and familyName.                                                   |
 | 8   | HTML meta tags                  | Implemented.                                                                                                    |
 | 9   | BibTeX                          | Implemented. Names are not formatted correctly (should John Doe not Doe, John).                                 |
-| 10  | Content negotiation             | Implemented via DataCite                                                                                        |
+| 10  | Content negotiation             | Implemented by using DataCite DOIs.                                                                             |
 | 11  | HTTP link headers               | Not yet implemented.                                                                                            |
 
 ## Example
