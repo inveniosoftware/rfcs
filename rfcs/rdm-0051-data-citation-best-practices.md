@@ -48,7 +48,7 @@ The following is the DCIP recommendation for documentation:
 | 5   | Documentation for data citation | Documentation for how to cite data in invenioRDM is currently missing.                                          |
 | 6   | Metadata required for citation  | Implemented using schema.org/json-ld. Should add support for givenName and familyName.                          |
 | 7   | Schema.org/json-ld              | Implemented. Should add support for givenName and familyName.                                                   |
-| 8   | HTML meta tags                  | Implemented. Consider using some addition tags such as `DC.identifier`.                                         |
+| 8   | HTML meta tags                  | Implemented. Consider using some additional tags such as `DC.identifier`.                                         |
 | 9   | BibTeX                          | Implemented. Names are not formatted correctly (should John Doe not Doe, John).                                 |
 | 10  | Content negotiation             | Implemented by using DataCite DOIs. Consider implementing in the invenioRDM API.                                |
 | 11  | HTTP link headers               | Not yet implemented.                                                                                            |
