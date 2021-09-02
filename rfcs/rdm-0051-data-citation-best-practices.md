@@ -49,7 +49,7 @@ The following is the DCIP recommendation for documentation:
 | 6   | Metadata required for citation  | Implemented using schema.org/json-ld. Should add support for givenName and familyName.                          |
 | 7   | Schema.org/json-ld              | Implemented. Should add support for givenName and familyName.                                                   |
 | 8   | HTML meta tags                  | Implemented. Consider using some additional tags such as `DC.identifier`.                                         |
-| 9   | BibTeX                          | Implemented. Names are not formatted correctly (should John Doe not Doe, John).                                 |
+| 9   | BibTeX                          | Implemented. Names are not formatted correctly (should be John Doe not Doe, John), needs support for givenName and familyName.                                 |
 | 10  | Content negotiation             | Implemented by using DataCite DOIs. Consider implementing in the invenioRDM API.                                |
 | 11  | HTTP link headers               | Not yet implemented.                                                                                            |
 
