@@ -7,7 +7,7 @@
 
 ## Summary
 
-Implement the 11 data citation best practices as described in Fenner et al. 2019 in invenioRDM.
+Implement the 11 data citation best practices as described in Fenner _et al._ 2019 in invenioRDM.
 
 Fenner, M., Crosas, M., Grethe, J. S., Kennedy, D., Hermjakob, H., Rocca-Serra, P., … Clark, T. (2019). A data citation roadmap for scholarly data repositories. Scientific Data, 6(1). https://doi.org/10.1038/s41597-019-0031-8
 
