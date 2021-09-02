@@ -56,32 +56,38 @@ The following is the DCIP recommendation for documentation:
 ## Example
 
 > Show a concrete example of what the RFC implies. This will make the consequences of adopting the RFC much clearer.
-
-> As with other sections, use it if it makes sense for your RFC.
+  
+Implementing the RFC will lead to better discovery of content hosted in inveniRDM, e.g. by Google Dataset Search.
 
 ## How we teach this
 
 > What names and terminology work best for these concepts and why? How is this idea best presented? As a continuation of existing Invenio patterns, or as a wholly new one?
+  
+No new terminology is needed, this RFC extends existing patterns.
 
 > Would the acceptance of this proposal mean the Invenio documentation must be re-organized or altered? Does it change how Invenio is taught to new users at any level?
 
+This RFC proposes better documentation for how to cite data. The focus for the documentation change is on end users.
+
 > How should this feature be introduced and taught to existing Invenio users?
+  
+This is an optional feature.
 
 ## Drawbacks
 
 > Why should we _not_ do this? Please consider the impact on teaching Invenio, on the integration of this feature with other existing and planned features, on the impact of the API churn on existing apps, etc.
-
-> There are tradeoffs to choosing any path, please attempt to identify them here.
+  
+This RFC increases the complexity of metadata for personal names. Conversion of already existing name metadata to support givenName and familyName is not trivial.
 
 ## Alternatives
 
 > What other designs have been considered? What is the impact of not doing this?
 
-> This section could also include prior art, that is, how other frameworks in the same domain have solved this problem.
+This follows the path DataCite has taken regarding givenName and familyName and the lessons learned. It is an achievable goal but the transition is not trivial.
 
 ## Unresolved questions
 
-> Optional, but suggested for first drafts. What parts of the design are still TBD? Use it as a todo list for the RFC.
+Content negotiation (#10) and http link headers (#11) are optional in the published Data Citation recommendations. This RFC suggests to implement them.
 
 ## Resources/Timeline
 
