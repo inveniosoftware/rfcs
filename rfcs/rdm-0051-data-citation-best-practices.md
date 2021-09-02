@@ -33,7 +33,7 @@ The best practices described in the paper are an output of the [Force11 DCIP pro
 
 ### Implementation status
 
-Most of the recommendations are implemented by invenioRDM, two of them by using DataCite DOIs. What is missing is mainly documentation for end users, and proper handling of givenName and familyName, which creates issues with citation and bibtex formatting. HTTP link headers is a nice optional feature that should be added.
+Most of the recommendations are implemented by invenioRDM, two of them by using DataCite DOIs. What is missing is mainly documentation for end users, and proper handling of givenName and familyName, to resolve issues with citation and bibtex formatting. HTTP link headers is a nice optional feature that should be added.
 
 The following is the DCIP recommendation for documentation:
 
