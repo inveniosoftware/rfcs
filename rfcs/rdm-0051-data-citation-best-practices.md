@@ -1,5 +1,5 @@
 - Start Date: 2021-08-18
-- RFC PR: [#<PR>](https://github.com/inveniosoftware/rfcs/pull/<PR>)
+- RFC PR: [#50](https://github.com/inveniosoftware/rfcs/pull/50)
 - Authors: Martin Fenner
 - State: DRAFT
 
