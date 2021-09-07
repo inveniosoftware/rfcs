@@ -42,27 +42,27 @@ The following is the DCIP recommendation for documentation:
 | No  | Label                           | Status                                                                                                          |
 | --- | ------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | 1   | Persistent identifier           | Implemented by using DataCite DOIs.                                                                             |
-| 2   | Granularity                     | Implemented by using versions and part/isPartOf relationships.                                                  |
+| 2   | Granularity                     | Implemented by using versions and part/isPartOf relationships in DataCite metadata.                             |
 | 3   | Landing page                    | Implemented in invenioRDM.                                                                                      |
 | 4   | PID in landing page             | Implemented using `citation_doi` meta tag and schema.org/JSON-LD. Consider adding the `DC.identifier` meta tag. |
 | 5   | Documentation for data citation | Documentation for how to cite data in invenioRDM is currently missing.                                          |
-| 6   | Metadata required for citation  | Implemented using schema.org/json-ld. Should add support for givenName and familyName.                          |
-| 7   | Schema.org/json-ld              | Implemented. Should add support for givenName and familyName.                                                   |
-| 8   | HTML meta tags                  | Implemented. Consider using some additional tags such as `DC.identifier`.                                         |
-| 9   | BibTeX                          | Implemented. Names are not formatted correctly (should be John Doe not Doe, John), needs support for givenName and familyName.                                 |
-| 10  | Content negotiation             | Implemented by using DataCite DOIs. Consider implementing in the invenioRDM API.                                |
+| 6   | Metadata required for citation  | Implemented using schema.org/json-ld.                                                                           |
+| 7   | Schema.org/json-ld              | Implemented. Re-evaluate the schema.org metadata that should be exported.                                       |
+| 8   | HTML meta tags                  | Implemented. Consider using some additional tags such as `DC.identifier`.                                       |
+| 9   | BibTeX                          | Implemented. Need to evaluate implementation.                                                                   |
+| 10  | Content negotiation             | Implemented by using DataCite DOI content negotation. Add content negotiation in the invenioRDM API.            |
 | 11  | HTTP link headers               | Not yet implemented.                                                                                            |
 
 ## Example
 
 > Show a concrete example of what the RFC implies. This will make the consequences of adopting the RFC much clearer.
-  
+
 Implementing the RFC will lead to better discovery of content hosted in inveniRDM, e.g. by Google Dataset Search.
 
 ## How we teach this
 
 > What names and terminology work best for these concepts and why? How is this idea best presented? As a continuation of existing Invenio patterns, or as a wholly new one?
-  
+
 No new terminology is needed, this RFC extends existing patterns.
 
 > Would the acceptance of this proposal mean the Invenio documentation must be re-organized or altered? Does it change how Invenio is taught to new users at any level?
@@ -70,13 +70,13 @@ No new terminology is needed, this RFC extends existing patterns.
 This RFC proposes better documentation for how to cite data. The focus for the documentation change is on end users.
 
 > How should this feature be introduced and taught to existing Invenio users?
-  
+
 This is an optional feature.
 
 ## Drawbacks
 
 > Why should we _not_ do this? Please consider the impact on teaching Invenio, on the integration of this feature with other existing and planned features, on the impact of the API churn on existing apps, etc.
-  
+
 This RFC increases the complexity of metadata for personal names. Conversion of already existing name metadata to support givenName and familyName is not trivial.
 
 ## Alternatives
