@@ -44,12 +44,12 @@ The following is the DCIP recommendation for documentation:
 | 1   | Persistent identifier           | Implemented by using DataCite DOIs.                                                                             |
 | 2   | Granularity                     | Implemented by using versions and part/isPartOf relationships in DataCite metadata.                             |
 | 3   | Landing page                    | Implemented in invenioRDM.                                                                                      |
-| 4   | PID in landing page             | Implemented using `citation_doi` meta tag and schema.org/JSON-LD. Consider adding the `DC.identifier` meta tag. |
+| 4   | PID in landing page             | Needs to be implemented using `citation_doi` meta tag, `DC.identifier` meta tag, and schema.org/JSON-LD.        |
 | 5   | Documentation for data citation | Documentation for how to cite data in invenioRDM is currently missing.                                          |
-| 6   | Metadata required for citation  | Implemented using schema.org/json-ld.                                                                           |
-| 7   | Schema.org/json-ld              | Implemented. Re-evaluate the schema.org metadata that should be exported.                                       |
-| 8   | HTML meta tags                  | Implemented. Consider using some additional tags such as `DC.identifier`.                                       |
-| 9   | BibTeX                          | Implemented. Need to evaluate implementation.                                                                   |
+| 6   | Metadata required for citation  | Needs to be implemented using schema.org/json-ld.                                                               |
+| 7   | Schema.org/json-ld              | Check completeness of schema.org metadata using validator.schema.org and Science on Schema.org.                 |
+| 8   | HTML meta tags                  | Needs to be implemented. Follow Google Scholar instructions.                                                    |
+| 9   | BibTeX                          | Needs to be implemented. Use https://github.com/aclements/biblib.                                               |
 | 10  | Content negotiation             | Implemented by using DataCite DOI content negotation. Add content negotiation in the invenioRDM API.            |
 | 11  | HTTP link headers               | Not yet implemented.                                                                                            |
 
