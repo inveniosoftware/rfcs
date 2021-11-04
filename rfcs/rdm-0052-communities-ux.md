@@ -1,5 +1,5 @@
 - Start Date: 2021-10-15
-- RFC PR: [#52>](https://github.com/inveniosoftware/rfcs/pull/52)
+- RFC PR: [#52](https://github.com/inveniosoftware/rfcs/pull/52)
 - Authors: Alex Ioannidis, Zach Zacharodimos, Lars Holm Nielsen, Max Moser, Guillaume Viger, Jenny Bonsak
 - State: DRAFT
 
