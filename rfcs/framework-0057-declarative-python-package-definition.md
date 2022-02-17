@@ -46,7 +46,7 @@ from setuptools import setup
 setup()
 ```
 
-This way tools like Requirements Builder work without modifications and you can still install a package via ``python setup.py install`` and build docs and compile message catalogs via ``python setup.py build_spinhx/compile_catalog``.
+This way tools like Requirements Builder work without modifications and you can still install a package via ``python setup.py install`` and build docs and compile message catalogs via ``python setup.py build_sphinx/compile_catalog``.
 
 ### Declarative package definition
 
@@ -121,16 +121,16 @@ We suggest removing all classifiers except the classifier related to development
 
 #### Version number
 
-The version number has to be moved from ``<package>/version.py`` to ``<package>/__init__.py``. This is because setuptools is only able to extract the version number using the Abstract Syntax Tree (i.e. not executing the code) when located in the ``__init__.py``. If the version number is placed in ``version.py`` setuptools wih import the main package which may lead to imports failing.
+The version number has to be moved from ``<package>/version.py`` to ``<package>/__init__.py``. This is because setuptools is only able to extract the version number using the Abstract Syntax Tree (i.e. not executing the code) when located in the ``__init__.py``. If the version number is placed in ``version.py`` setuptools will import the main package which may lead to imports failing.
 
 #### Extras require
 
-We can no longer programmatically define an ``all`` extra from other extras (like ``tests`` and ``docs``. There's two options:
+We can no longer programmatically define an ``all`` extra from other extras (like ``tests`` and ``docs``. There are two options:
 
 - Duplicate all extra dependencies in an ``all`` extras (risk of getting outdated).
 - Gather as much as possible into a ``tests`` extras (extra documentation needed).
 
-We suggest as far as possible keeping a single ``all`` extra requires that includes tests and docs requirements. Extra requirements needs to be duplciated into this all requirements, but this means that all packages can mostly be installed via ``pip install -e ``.[all]`` to start development on the package.
+We suggest as far as possible keeping a single ``all`` extra requires that includes tests and docs requirements. Extra requirements needs to be duplicated into this ``all`` requirements, but this means that all packages can mostly be installed via ``pip install -e ``.[all]`` to start development on the package.
 
 ### Building the package
 
@@ -167,7 +167,7 @@ Above should be implemented in the ``cookiecutter-invenio-module`` template repo
 
 ## Drawbacks
 
-The benefits of this change only becomes available on the long-term as there are no immediate benefits. However long-term it enables us to improve and automate our dependency management that continue to be a major source of disruptions to the development.
+The benefits of this change only becomes available on the long-term as there are no immediate benefits. However long-term it enables us to improve and automate our dependency management which continues to be a major source of disruptions to development.
 
 ## Resources/Timeline
 
