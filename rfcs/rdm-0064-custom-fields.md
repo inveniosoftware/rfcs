@@ -22,11 +22,11 @@ Different instances of InvenioRDM are setup to fit different use cases. In order
 
 ### Use Cases
 
-The following use cases will be marked with an emoji at the beginning of the sentence to clarify the support for it in the first iteration of the custom fields. Namely, if it is available in InvenioRDM v10. More information can be found in the [limitations section](#First-iteration-limitations).
+The following use cases will be marked with an emoji at the beginning of the sentence to clarify if it is supported or not. If it is not, or not completely, it might be coming in future releases. Check the [future work](#future-work) section.
 
 - :white_check_mark: It is available in InvenioRDM v10
 - :x: It is **not** available in InvenioRDM v10
-- :grey_question: It is available in InvenioRDM v10, but with some limitations. See more in the [limitations section](#First-iteration-limitations).
+- :grey_question: It is available in InvenioRDM v10, but with some limitations.
 
 **As an instance administrator...**
 
@@ -54,21 +54,18 @@ The following use cases will be marked with an emoji at the beginning of the sen
 - :white_check_mark: I want to be able to filter my search results based on my new field.
 - :white_check_mark: I want to support translations (i18n) for the values of the custom fields, when using vocabularies.
 
-### First iteration limitations
+### Future work
 
-The first iteration of custom fields will be available in InvenioRDM v10. It targets the implementation of two field types, allowing to add primitive types custom fields (e.g. free text, boolean, number) and also based on generic vocabularies (e.g. defining a new "experiment" vocabulary). This will enable the implementation of the mechanisms to support custom fields, and allow developers to extend support for new types of fields (e.g. dates).
+This RFC targets the implementation of two field types, allowing to add primitive types custom fields (e.g. free text, boolean, number) and also based on generic vocabularies (e.g. defining a new "experiment" vocabulary). This will enable the implementation of the mechanisms to support custom fields, and allow developers to impelement new types of fields (e.g. dates).
 
-Therefore, it **comes with some limitation**:
+Functionalities that might come in the future:
 
-- Only two field types are supported: Text and generic vocabularies, in consequence both simple and advance field types are tested. For example, resource types, or new ones of your creation that adhere to the [generic vocabulary](https://inveniordm.docs.cern.ch/reference/rest_api_vocabularies/) data model.
-
-- Fields are configured globally for all records and for all communities. Note that they do not mix, those appearing in records will not appear in communities. However, all communities will have the same fields.
-- You can hide (not display) fields in the UI. However, they will be available in the REST API. Moreover, hiding them will hide them globally. This means that the upload or settings form will not display them, but they will be visible in the landing page (e.g. if submitted via REST API).
-- There are no per-field permissions checks on these fields. They do respect the records permissions (i.e. will not show if the record is restricted).
-- It is not possible to configure the fields using the UI, it will be done in the instance `invenio.cfg` file.
-- Compatibility with OpenSearch has not been tested. Only Elasticsearch 7 has been tested.
-- In the forms, you can add fields to new groups but not to existing ones (e.g. Basic Information).
-- Translations (i18n) is only supported for labels and descriptions of all fields. Vocabularies also support translation of the values as long as those have been added when imported.
+- Configuration of custom fields per community. Meaning, each community has its own specific custom fields.
+- Internal use field, that will not be visible by end users in the UI nor in the REST API.
+- Applying permissions per-field.
+- Configuring custom fields using the UI, for example the _Backoffice_.
+- Compatibility with OpenSearch.
+- Add custom fields to existing sections, for example _Basic Information_.
 
 ## Detailed design
 
