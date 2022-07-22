@@ -76,28 +76,45 @@ The topics covered by this RFC are the following:
 - [Storing and indexing values for custom fields.](#storing-and-indexing-values-for-custom-fields)
 - [Linking custom fields to vocabularies.](#linking-custom-fields-to-vocabularies)
 - [Rendering widgets for custom fields in a form.](#rendering-widgets-for-custom-fields-in-a-form)
+- [Building new custom widgets.](#building-new-custom-widgets)
 - [Rendering custom fields values in the record landing page.](#rendering-custom-fields-values-in-the-record-landing-page)
 - [Adding a custom field as facet in the search page.](#adding-a-custom-field-as-facet-in-the-search-page)
-- [Building new custom widgets.](#building-new-custom-widgets)
 
 Along the RFC the following example use case will be used to exaplain the corresponding topic:
 
 _At CERN, I want to choose the experiment to which the record belong to, assuming experiments come from a controlled vocabulary. In addition, I want to be able to filter the record search by experiment._
+
+> Note: Along this RFC configuration variables are prefixed with `RDM_`, this means that custom fields are being added to _records_. However, the same configuration variables will be available in communities and will be used then adding custom fields to them. Namely, `COMMUNITIES_CUSTOM_FIELDS` and `COMMUNITIES_CUSTOM_FIELDS_UI`.
 
 ### Defining custom fields for an instance.
 
 The first step to add custom fields is to define/configure them. The instance administrator will change the configuraiton variables `RDM_CUSTOM_FIELDS` and `RDM_CUSTOM_FIELDS_UI` in the `invenio.cfg` configuration file. The following example shows only the configuration needed to **enable the custom field** in the data model not how to display them. This second part will be explained in the [Rendering widgets for custom fields in a form.](#rendering-widgets-for-custom-fields-in-a-form) section.
 
 ```python
+NAMESPACES = {
+    "cern": "https://cern.ch/terms",
+    "dwc": "http://rs.tdwg.org/dwc/terms/"
+}
+
 RDM_CUSTOM_FIELDS = {
     "experiment": VocabularyCF(
-        name="experiment",
         vocabulary_id="cernexperiments",  # see namespacing in the unresolved questions section
+        name="experiment",
+        namespace="cern", # or other, for example, dwc for Darwin Core
+        required=True,
+        validation=custom_validate_func(),
+        error_messages={"required": "custom message"},
     ),
 }
 ```
 
-> Note: In the above configuration and along this RFC configuration variables are prefixed with `RDM_`, this means that custom fields are being added to _records_. However, the same configuration variables are available in communities and will be used then adding custom fields to them. Namely, `COMMUNITIES_CUSTOM_FIELDS` and `COMMUNITIES_CUSTOM_FIELDS_UI`.
+The last three attributes, namely `required`, `validation_func` and `error_messages`, are passed to the Marshmallow field. This allows the instance administrator to configure custom behaviour, both in validation and error messages returned.
+
+**Namespacing**
+
+In the above configuration, a `NAMESPACES` variable can be seen. This will allow fields to be uniquely identified and avoid collisions between vocabularies (e.g. Darwin Core, Dublin Core, etc.). This will also enable the expansion of the fields with an URI, which will be necessary in the serialization step.
+
+In the data model, the namespace will be prepended to the field name. For example, the above field would be reference as `cern:experiment` in the record content.
 
 ### Building new custom field types
 
@@ -107,10 +124,15 @@ All the available custom field types will be implemented in `<Type>CF` classes. 
 class BaseCF(ABC):
 """Base Custom Field class."""
 
-    def __init__(self, name):
+    def __init__(self, name, required=False, validation_func=None, error_messages=None):
         """Constructor."""
         super().__init__()
         self.name = name
+        self.field_args = {
+            "required": required,
+            "validation_func": validation_func,
+            "error_messages": error_messages,
+        }
 
     @property
     @abstractmethod
@@ -120,19 +142,22 @@ class BaseCF(ABC):
 
     @property
     @abstractmethod
-    def schema(self):
-        """Marshmallow schema for custom fields."""
+    def field(self):
+        """Marshmallow field for custom fields.
+
+        The field_args will be injected in the corresponding field.
+        """
         pass
 
     @property
-    def ui_schema(self):
-        """Marshmallow UI schema for custom fields.
+    def ui_field(self):
+        """Marshmallow UI field for custom fields.
 
         Controls how the field will be serialized in the UI when using the
         `UIJSONSerializer`. If not overriden, the default implementation will use
-        the `BaseCF.schema` property.
+        the `BaseCF.field` property.
         """
-        return self.schema
+        return self.field
 
 class TextCF(BaseCF):
 """Text custom field."""
@@ -148,7 +173,9 @@ class TextCF(BaseCF):
 
 ### Storing and indexing values for custom fields
 
-All custom fields will be added inside the `custom_fields` parent field, at the same level than `metadata`. Note, that the name of this parent field is still to be agreed upon (e.g. _custom_, _custom_fields_ or _ext_)
+All custom fields will be added inside the `custom_fields` parent field, at the same level than `metadata`. The jsonschema will not validate the inner fields, leaving that task up to Marshmallow. This behaviour is consistent with the rest of the fields in the data model.
+
+> Note, that the name of this parent field is still to be agreed upon (e.g. _custom_, _custom_fields_ or _ext_)
 
 ```json
 {
@@ -156,7 +183,7 @@ All custom fields will be added inside the `custom_fields` parent field, at the 
         ...
     },
     "custom_fields": {
-        "experiment": ...
+        "cern:experiment": ...
     }
 }
 ```
@@ -167,10 +194,7 @@ Once the custom fields are configured in the `invenio.cfg` file, they need to be
 
 **create**
 
-
-> Note: an instance administrator can add custom fields. **Updating and deleting a custom field is not possible**. This constraint is imposed to avoid data migration and potential inconsistencies. 
-
-TODO: PURPOSE TOO ADD AFTER INDEX CREATED 
+On an existing instance, the Elasticsearch mapping has already been created when the `invenio-cli services setup` command was run. If the custom fields were defined after that, the mappings need to be updated, meaning __adding a custom field__. __Updating and deleting a custom field is not possible__. This constraint is imposed to avoid data migration and potential inconsistencies.
 
 You can add fields to the records and community data models using the following command. You can pass any number of configured fields.
 
@@ -274,7 +298,7 @@ As it was mentioned earlier, the structure of the config variable is as follows:
 RDM_CUSTOM_FIELDS_UI = [{
     "section": _("CERN Fields"),
     "fields": [{
-        "field": "experiment",  # this should be validated against the defined fields in `RDM_CUSTOM_FIELDS`
+        "field": "cern:experiment",  # this should be validated against the defined fields in `RDM_CUSTOM_FIELDS`
         "ui_widget": "MyCustomField",  # custom widget defined in the instance assets
         "props": {
             "label": _('CERN Experiment'),
@@ -327,32 +351,6 @@ An example of `props` passed in the example configuration above is analyzed belo
 |   description   | string | Description to be used as helptext for the new defined field. |
 
 Moreover, any other property can be passed in the respective UI widget via the `props` key.
-
-### Rendering custom fields values in the record landing page
-
-The custom fields will be displayed by default in a _to-be-defined_ place in the record's landing page and community's detail page. The default place will be decided to fit the up-to-date UX design of these pages. That said, every institution has their own UI design and it is already possible to override the default display by overriding the Jinja templates of these pages.
-
-One possibility will be to show include the sections and fields in the _additional details_ table of the record's landing page (DRAFT MOCKUP):
-
-![](./0064/additional_details.png)
-
-It would be situated at the bottom of it:
-
-![](./0064/landing_page.png)
-
-### Adding a custom field as facet in the search page
-
-Search filtering or facetting is configured as it was before, using the and `RDM_FACETS` variable. The `CFTermsFacet` facet class would abstract all the namespacing. Therefore, only the field name is needed (i.e. experiment).
-
-```python
-RDM_FACETS = {  # To add search filtering
-    "experiment": CFTermsFacet()
-}
-```
-
-Then the facet will be displayed in the search page:
-
-![](./0064/facets.png)
 
 ### Building new custom widgets
 
@@ -415,6 +413,32 @@ RDM_CUSTOM_FIELDS_UI = [{
 
 In a similar manner, instance administrators can redefine in their RDM instance an existing UI widget and override completely its behaviour. For this they would need to create a file with the same name as the component they want to override.
 
+### Rendering custom fields values in the record landing page
+
+The custom fields will be displayed in the _additional details_ section. Each custom fields section will be one different tab, containing all the corresponding fields. Note that required fields will be displayed in this section. However, every institution has their own UI design and it is already possible to override the default display by overriding the Jinja templates of these pages.
+
+**DRAFT MOCKUP** of the _additional details__ section:
+
+![](./0064/additional_details.png)
+
+It would be situated at the bottom of it:
+
+![](./0064/landing_page.png)
+
+### Adding a custom field as facet in the search page
+
+Search filtering or facetting is configured as it was before, using the and `RDM_FACETS` variable. The `CFTermsFacet` facet class would abstract all the namespacing. Therefore, only the field name is needed (i.e. experiment).
+
+```python
+RDM_FACETS = {  # To add search filtering
+    "experiment": CFTermsFacet()
+}
+```
+
+Then the facet will be displayed in the search page:
+
+![](./0064/facets.png)
+
 ## Example
 
 The full configuration for the example use case presented at the beggining is:
@@ -426,13 +450,14 @@ RDM_CUSTOM_FIELDS = {
     "experiment": VocabularyCF(
         name="experiment",
         vocabulary_id="cernexperiments",
+        ...
     ),
 }
 
 RDM_CUSTOM_FIELDS_UI = [{
     "section": _("CERN Fields"),
     "fields": [{
-        "field": "experiment",  # this should be validated against the defined fields in `RDM_CUSTOM_FIELDS`
+        "field": "cern:experiment",  # this should be validated against the defined fields in `RDM_CUSTOM_FIELDS`
         "ui_widget": "MyCustomField",
         "props": {
             "label": _('CERN Experiment'),
@@ -462,17 +487,20 @@ Now, the field is fully available in the records data model under `custom_fields
 
 ## How we teach this
 
-This feature will be documented in the `customization` section of the InvenioRDM documentation. It should include:
+This feature will be documented in the `customization` section of the InvenioRDM documentation. The following content should be added to the `customize` and `develop` sections:
 
-- How to configure the custom fields in the `invenio.cfg` file.
-- What types of fields are available.
-- How to implement and add new field types including examples.
-- Which widgets are available.
-- How to implement and add new UI widgets. Highlight different cookiecutter folder paths and config variables.
-- Point to the documentation on how to add new vocabularies (needed for `VocabularyCF`).
-- Point to the CLI documentation and available commands for `custom-fields`.
-  - Need to add the command to the reference guide.
-- List of limitation of the up-to-date implementation.
+**Customize**
+
+- Defining a custom field
+    - What types of fields are available
+    - Updating the data model (ES mapping), and point to the updated CLI reference
+- Adding a custom field to a form
+    - Which widgets are available
+
+**Develop**
+
+- Implementing a custom CF type
+- Implementing a custom UI widget
 
 ## Drawbacks
 
