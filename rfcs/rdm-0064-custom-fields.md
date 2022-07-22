@@ -375,6 +375,14 @@ In a similar manner, instance administrators can redefine in their RDM instance 
 
 The custom fields will be displayed by default in a _to-be-defined_ place in the record's landing page and community's detail page. The default place will be decided to fit the up-to-date UX design of these pages. That said, every institution has their own UI design and it is already possible to override the default display by overriding the Jinja templates of these pages.
 
+One possibility will be to show include the sections and fields in the _additional details_ table of the record's landing page:
+
+![](./0064/additional_details.png)
+
+It would be situated at the bottom of it:
+
+![](./0064/landing_page.png)
+
 ### Adding a custom field as facet in the search page
 
 Search filtering or facetting is configured as it was before, using the and `RDM_FACETS` variable. The `CFTermsFacet` facet class would abstract all the namespacing. Therefore, only the field name is needed (i.e. experiment).
