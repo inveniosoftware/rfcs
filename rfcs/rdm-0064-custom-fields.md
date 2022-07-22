@@ -22,7 +22,7 @@ Different instances of InvenioRDM are setup to fit different use cases. In order
 
 ### Use Cases
 
-The following use cases will be marked with an emoji at the beginning of the sentence to clarify if it is supported or not. If it is not, or not completely, it might be coming in future releases. Check the [future work](#future-work) section.
+The following use cases will be marked at the beginning of the sentence to clarify if it is supported or not. If it is not, or not completely, it might be coming in future releases. Check the [future work](#future-work) section.
 
 - :white_check_mark: It is available in InvenioRDM v10
 - :x: It is **not** available in InvenioRDM v10
@@ -38,7 +38,9 @@ The following use cases will be marked with an emoji at the beginning of the sen
 **The following use cases apply to all the above points**, and focus on the how fields are defined and used.
 
 - :grey_question: I want to be able to define the type: primitive (string, number, boolean, date), complex (list, dictionary), and vocabularies (both generic and specific).
-- :x: I want to be able to define required fields.
+- :white_check_mark: I want to be able to define required fields.
+- :white_check_mark: I want to be able to customize the validation of these fields.
+- :white_check_mark: I want to be able to overwrite the error messages of the custom fields' validation.
 
 **When displaying the custom fields in the forms...**
 
@@ -56,12 +58,12 @@ The following use cases will be marked with an emoji at the beginning of the sen
 
 ### Future work
 
-This RFC targets the implementation of two field types, allowing to add primitive types custom fields (e.g. free text, boolean, number) and also based on generic vocabularies (e.g. defining a new "experiment" vocabulary). This will enable the implementation of the mechanisms to support custom fields, and allow developers to impelement new types of fields (e.g. dates).
+This RFC targets the implementation of two field types, allowing to add primitive type custom fields (e.g. free text, boolean, number) and also based on generic vocabularies (e.g. defining a new "cern experiments" vocabulary). This will enable the implementation of the mechanisms to support custom fields, and allow developers to impelement new types of fields (e.g. date ranges).
 
 Functionalities that might come in the future:
 
-- Configuration of custom fields per community. Meaning, each community has its own specific custom fields.
-- Internal use field, that will not be visible by end users in the UI nor in the REST API.
+- Configuration of custom fields per community. Meaning, each community would have its own specific custom fields.
+- Internal use fields, that will not be visible by end users in the UI nor in the REST API.
 - Applying permissions per-field.
 - Configuring custom fields using the UI, for example the _Backoffice_.
 - Compatibility with OpenSearch.
@@ -71,14 +73,14 @@ Functionalities that might come in the future:
 
 The topics covered by this RFC are the following:
 
-- [Defining custom fields for an instance.](#defining-custom-fields-for-an-instance)
-- [Building new custom field types.](#building-new-custom-field-types)
-- [Storing and indexing values for custom fields.](#storing-and-indexing-values-for-custom-fields)
-- [Linking custom fields to vocabularies.](#linking-custom-fields-to-vocabularies)
-- [Rendering widgets for custom fields in a form.](#rendering-widgets-for-custom-fields-in-a-form)
-- [Building new custom widgets.](#building-new-custom-widgets)
-- [Rendering custom fields values in the record landing page.](#rendering-custom-fields-values-in-the-record-landing-page)
-- [Adding a custom field as facet in the search page.](#adding-a-custom-field-as-facet-in-the-search-page)
+- [Defining custom fields for an instance](#defining-custom-fields-for-an-instance)
+- [Building new custom field types](#building-new-custom-field-types)
+- [Storing and indexing values for custom fields](#storing-and-indexing-values-for-custom-fields)
+- [Linking custom fields to vocabularies](#linking-custom-fields-to-vocabularies)
+- [Rendering widgets for custom fields in a form](#rendering-widgets-for-custom-fields-in-a-form)
+- [Building new custom widgets](#building-new-custom-widgets)
+- [Rendering custom fields values in the record landing page](#rendering-custom-fields-values-in-the-record-landing-page)
+- [Adding a custom field as facet in the search page](#adding-a-custom-field-as-facet-in-the-search-page)
 
 Along the RFC the following example use case will be used to exaplain the corresponding topic:
 
@@ -86,9 +88,9 @@ _At CERN, I want to choose the experiment to which the record belong to, assumin
 
 > Note: Along this RFC configuration variables are prefixed with `RDM_`, this means that custom fields are being added to _records_. However, the same configuration variables will be available in communities and will be used then adding custom fields to them. Namely, `COMMUNITIES_CUSTOM_FIELDS` and `COMMUNITIES_CUSTOM_FIELDS_UI`.
 
-### Defining custom fields for an instance.
+### Defining custom fields for an instance
 
-The first step to add custom fields is to define/configure them. The instance administrator will change the configuraiton variables `RDM_CUSTOM_FIELDS` and `RDM_CUSTOM_FIELDS_UI` in the `invenio.cfg` configuration file. The following example shows only the configuration needed to **enable the custom field** in the data model not how to display them. This second part will be explained in the [Rendering widgets for custom fields in a form.](#rendering-widgets-for-custom-fields-in-a-form) section.
+The first step to add custom fields is to define/configure them. The instance administrator will change the configuraiton variables `RDM_CUSTOM_FIELDS` and `RDM_CUSTOM_FIELDS_UI` in the `invenio.cfg` configuration file. The following example shows only the configuration needed to **enable the custom field** in the data model not how to display them. This second part will be explained in the [Rendering widgets for custom fields in a form](#rendering-widgets-for-custom-fields-in-a-form) section.
 
 ```python
 NAMESPACES = {
@@ -188,11 +190,11 @@ All custom fields will be added inside the `custom_fields` parent field, at the 
 }
 ```
 
-#### Creating a _custom field_
+#### Updating the Elasticsearch mapping
 
-Once the custom fields are configured in the `invenio.cfg` file, they need to be added to the record's mapping, so their values are properly indexed in Elasticsearch. That can be done using the CLI.
+Once the custom fields are configured in the `invenio.cfg` file, they need to be added to the record's mapping, so their values are properly indexed in Elasticsearch. That can be done using the CLI. Under the hood, the CLI will be using the `mapping` property defined in the `<TypeCF>` class. For example the `TextCF` will be indexed as `text`.
 
-**create**
+**CLI**
 
 On an existing instance, the Elasticsearch mapping has already been created when the `invenio-cli services setup` command was run. If the custom fields were defined after that, the mappings need to be updated, meaning __adding a custom field__. __Updating and deleting a custom field is not possible__. This constraint is imposed to avoid data migration and potential inconsistencies.
 
@@ -238,7 +240,7 @@ class RecordSchema:
      custom_fields = fields.Nested(CustomFieldsSchema)
 ```
 
-It will load from configuration all custom fields an generate a Marshmallow schema. The resulting schema will have as fields the values returned by the `<Type>CF.schema` function. For example `SanitizedUnicode` in the `TextCF` presented above.
+It will load from configuration all custom fields an generate a Marshmallow schema. The resulting schema will have as fields the values returned by the `<Type>CF.field` function. For example `SanitizedUnicode` in the `TextCF` presented above.
 
 ```python
 class CustomFieldsSchema(Schema):
@@ -253,7 +255,7 @@ class CustomFieldsSchema(Schema):
          super().__init__(*args, **kwargs)
          config = current_app.config.get("RDM_CUSTOM_FIELDS", {})
          self.fields = {
-             field_key: getattr(field, "schema")()
+             field_key: getattr(field, "field")()
              for field_key, field in config.items()
          }
          self._schema = Schema.from_dict(self.fields)()
@@ -277,7 +279,7 @@ The programmatic API to access records' relations is kept intact. For example, a
 
 `CustomFieldsRelation` is an implementation of `RelationsField` that injects vocabulary custom fields in the record's relations attribute. In addition, to avoid name collisions these new fields are prefixed with `custom_`.
 
-For example, the previously configured `experiments` custom field is accessed as `record.relations.custom_experiments`, while `record.relations.custom` would give an attribute error.
+For example, the previously configured `experiments` custom field is accessed as `record.relations.custom_experiments`, while `record.relations.custom_fields` would give an attribute error.
 
 ```python
 class Record:
@@ -569,15 +571,7 @@ Evaluation the consequences and taking as an example Zenodo, where most of the c
 
 ## Unresolved questions
 
-Per community fields (both data model and settings form), required fields, and more flexible UI customizations might be implemented in the future. However, a clear path to implementation could not be identified due to their complexity.
-
-### Vocabularies namespacing
-
-While custom fields are already namespaced (separated from core metadata), by grouping them in the `custom_fields` dictionary, collisions are still possible. 
-
-- It could happen between two sections. Imagine a CERN and a NASA section on a record (since custom fields are global), both including `experiments`. There are two potential solutions for this. One is to namespace when defining the field in `RDM_CUSTOM_FIELDS`, meaning `name="cern.experiment"`. Another, option would be to do the same but taken care by the implementation so the definition stays as`name=experiment`.
-- Between vocabularies, similar to the above but instead of two fields two vocabularies both with `experiment` field. Similarly could potentially happen e.g. between Darwin Core and others. Should the `VocabularyCF` enforce the `id` and/or `name` to be a URI? This would allow for easier namespacing of the fields. However, it would bring other complications on the validation/serialization and custom fields creation via CLI, since those values are used to get information from config. It might need an extra attribute `namespace`.
-- Between instances, looking forward to a potential synchronization of instances. This use case falls out of scope for now.
+Per community fields (both data model and settings form), and more flexible UI customizations might be implemented in the future. However, a clear path to implementation could not be identified due to their complexity.
 
 ### Export formats
 
