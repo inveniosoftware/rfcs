@@ -12,11 +12,11 @@ InvenioRDM's record and community data models might not contain all the fields n
 
 Different instances of InvenioRDM are setup to fit different use cases. In order to fulfil those, these instances will need to enrich the base data model with domain specific fields. Thus, the need for a mechanism to add/support these custom fields in all levels of the existing data models (jsonschema, marshmallow, Elasticsearch mappings) and make them available to the end user in the upload and community creation/settings forms. These forms would look similar to the following images (for records and communities respectively):
 
-**Upload form**
+**Upload form (DRAFT MOCKUP)**
 
 ![](./0064/records.png)
 
-**Community creation form**
+**Community creation form (DRAFT MOCKUP)**
 
 ![](./0064/community.png)
 
@@ -69,15 +69,24 @@ Functionalities that might come in the future:
 
 ## Detailed design
 
-An instance administrator can add custom fields. **Updating and deleting a custom field is not possible**. This constraint is imposed to avoid data migration and potential inconsistencies.
+The topics covered by this RFC are the following:
 
-### Configuring a _custom field_
+- [Defining custom fields for an instance.](#defining-custom-fields-for-an-instance)
+- [Building new custom field types.](#building-new-custom-field-types)
+- [Storing and indexing values for custom fields.](#storing-and-indexing-values-for-custom-fields)
+- [Linking custom fields to vocabularies.](#linking-custom-fields-to-vocabularies)
+- [Rendering widgets for custom fields in a form.](#rendering-widgets-for-custom-fields-in-a-form)
+- [Rendering custom fields values in the record landing page.](#rendering-custom-fields-values-in-the-record-landing-page)
+- [Adding a custom field as facet in the search page.](#adding-a-custom-field-as-facet-in-the-search-page)
+- [Building new custom widgets.](#building-new-custom-widgets)
 
-The first step is to define how custom fields can be added/configured. A top to bottom approach (from more to less abstracted) will be followed to explain the configuration. Taking the following use case:
+Along the RFC the following example use case will be used to exaplain the corresponding topic:
 
 _At CERN, I want to choose the experiment to which the record belong to, assuming experiments come from a controlled vocabulary. In addition, I want to be able to filter the record search by experiment._
 
-The instance administrator will change the configuraiton variables `RDM_CUSTOM_FIELDS` and `RDM_CUSTOM_FIELDS_UI` in the `invenio.cfg` configuration file. The following example shows only the configuration needed to **enable the custom field** in the data model not how to display them. This second part will be explained in the [_Adding-a-custom-UI-widget_](#Add a custom UI widget) section.
+### Defining custom fields for an instance.
+
+The first step to add custom fields is to define/configure them. The instance administrator will change the configuraiton variables `RDM_CUSTOM_FIELDS` and `RDM_CUSTOM_FIELDS_UI` in the `invenio.cfg` configuration file. The following example shows only the configuration needed to **enable the custom field** in the data model not how to display them. This second part will be explained in the [Rendering widgets for custom fields in a form.](#rendering-widgets-for-custom-fields-in-a-form) section.
 
 ```python
 RDM_CUSTOM_FIELDS = {
@@ -89,6 +98,8 @@ RDM_CUSTOM_FIELDS = {
 ```
 
 > Note: In the above configuration and along this RFC configuration variables are prefixed with `RDM_`, this means that custom fields are being added to _records_. However, the same configuration variables are available in communities and will be used then adding custom fields to them. Namely, `COMMUNITIES_CUSTOM_FIELDS` and `COMMUNITIES_CUSTOM_FIELDS_UI`.
+
+### Building new custom field types
 
 All the available custom field types will be implemented in `<Type>CF` classes. These will be in charge of defining the properties that reflect the data model, such as Marshmallow schema and Elasticsearch mapping. In the previous example `VocabularyCF`.
 
@@ -135,7 +146,9 @@ class TextCF(BaseCF):
         return SanitizedUnicode()
 ```
 
-Note that all custom fields will be added inside the `custom` parent field, at the same level than `metadata`.
+### Storing and indexing values for custom fields
+
+All custom fields will be added inside the `custom_fields` parent field, at the same level than `metadata`. Note, that the name of this parent field is still to be agreed upon (e.g. _custom_, _custom_fields_ or _ext_)
 
 ```json
 {
@@ -148,6 +161,31 @@ Note that all custom fields will be added inside the `custom` parent field, at t
 }
 ```
 
+#### Creating a _custom field_
+
+Once the custom fields are configured in the `invenio.cfg` file, they need to be added to the record's mapping, so their values are properly indexed in Elasticsearch. That can be done using the CLI.
+
+**create**
+
+
+> Note: an instance administrator can add custom fields. **Updating and deleting a custom field is not possible**. This constraint is imposed to avoid data migration and potential inconsistencies. 
+
+TODO: PURPOSE TOO ADD AFTER INDEX CREATED 
+
+You can add fields to the records and community data models using the following command. You can pass any number of configured fields.
+
+```shell
+invenio-cli custom-fields create [-f <fieldname>] [-f <fieldname>]
+```
+
+In order to create _all_ configured values, just ignore the `-f` option. For example, on the first time an instance is set up.
+
+```shell
+invenio-cli custom-fields create
+```
+
+Note that this command is idempotent, and it suffices with being run once. All posterior executions will not have effect (the field was already created).
+
 #### Custom field type / Marshmallow / Elasticsearch chart
 
 The following table represents the type conversion/relation between custom field type, Marshmallow fields and Elasticsearch mapping.
@@ -157,7 +195,7 @@ The following table represents the type conversion/relation between custom field
 |      string       | SanitizedUnicode  |         text          |
 |      keyword      | SanitizedUnicode  |        keyword        |
 |       date        |     DateField     |    isoformat date     |
-|     date range    |   EDTFDateString  |  multi isoformat date |
+|     edtf date     |   EDTFDateString  |  multi isoformat date |
 |      integer      |      Integer      |        integer        |
 |      double       |      Number       |        double         |
 |      boolean      |      Boolean      |        boolean        |
@@ -205,7 +243,7 @@ class CustomFieldsSchema(Schema):
          return self._schema.load(data=data)
 ```
 
-#### Linking vocabulary custom fields to a record
+### Linking custom fields to vocabularies
 
 > Note: in this sub section the term _record_ is treated as a generic term, namely a document. It will refer to bibliographic and community records as _records_.
 
@@ -226,27 +264,7 @@ class Record:
 
 The dereferencing part is transparent, i.e. no code needs to be altered since the API is still the same. It is carried out by the `RelationsComponent` which will dereference the relations.
 
-### Creating a _custom field_
-
-Once the custom fields are configured in the `invenio.cfg` file, they need to be added to the record's mapping, so their values are properly indexed in Elasticsearch. That can be done using the CLI.
-
-**create**
-
-You can add fields to the records and community data models using the following command. You can pass any number of configured fields.
-
-```shell
-invenio-cli custom-fields create [-f <fieldname>] [-f <fieldname>]
-```
-
-In order to create _all_ configured values, just ignore the `-f` option. For example, on the first time an instance is set up.
-
-```shell
-invenio-cli custom-fields create
-```
-
-Note that this command is idempotent, and it suffices with being run once. All posterior executions will not have effect (the field was already created).
-
-### Adding a custom UI widget
+### Rendering widgets for custom fields in a form
 
 The previously mentioned `RDM_CUSTOM_FIELDS_UI` variable holds the information about how the custom fields will be displayed in the different UI pages.
 
@@ -310,7 +328,33 @@ An example of `props` passed in the example configuration above is analyzed belo
 
 Moreover, any other property can be passed in the respective UI widget via the `props` key.
 
-#### Adding custom fields to the forms
+### Rendering custom fields values in the record landing page
+
+The custom fields will be displayed by default in a _to-be-defined_ place in the record's landing page and community's detail page. The default place will be decided to fit the up-to-date UX design of these pages. That said, every institution has their own UI design and it is already possible to override the default display by overriding the Jinja templates of these pages.
+
+One possibility will be to show include the sections and fields in the _additional details_ table of the record's landing page (DRAFT MOCKUP):
+
+![](./0064/additional_details.png)
+
+It would be situated at the bottom of it:
+
+![](./0064/landing_page.png)
+
+### Adding a custom field as facet in the search page
+
+Search filtering or facetting is configured as it was before, using the and `RDM_FACETS` variable. The `CFTermsFacet` facet class would abstract all the namespacing. Therefore, only the field name is needed (i.e. experiment).
+
+```python
+RDM_FACETS = {  # To add search filtering
+    "experiment": CFTermsFacet()
+}
+```
+
+Then the facet will be displayed in the search page:
+
+![](./0064/facets.png)
+
+### Building new custom widgets
 
 > This section focuses on adding/overriding widgets for the records upload or communities settings form. How to display them on existing records is explained in the following section.
 
@@ -370,32 +414,6 @@ RDM_CUSTOM_FIELDS_UI = [{
 ```
 
 In a similar manner, instance administrators can redefine in their RDM instance an existing UI widget and override completely its behaviour. For this they would need to create a file with the same name as the component they want to override.
-
-### Overriding how fields will be displayed in the record's / community's detail page
-
-The custom fields will be displayed by default in a _to-be-defined_ place in the record's landing page and community's detail page. The default place will be decided to fit the up-to-date UX design of these pages. That said, every institution has their own UI design and it is already possible to override the default display by overriding the Jinja templates of these pages.
-
-One possibility will be to show include the sections and fields in the _additional details_ table of the record's landing page:
-
-![](./0064/additional_details.png)
-
-It would be situated at the bottom of it:
-
-![](./0064/landing_page.png)
-
-### Adding a custom field as facet in the search page
-
-Search filtering or facetting is configured as it was before, using the and `RDM_FACETS` variable. The `CFTermsFacet` facet class would abstract all the namespacing. Therefore, only the field name is needed (i.e. experiment).
-
-```python
-RDM_FACETS = {  # To add search filtering
-    "experiment": CFTermsFacet()
-}
-```
-
-Then the facet will be displayed in the search page:
-
-![](./0064/facets.png)
 
 ## Example
 
