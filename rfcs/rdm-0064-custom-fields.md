@@ -62,7 +62,7 @@ This RFC targets the implementation of two field types, allowing to add primitiv
 
 Functionalities that might come in the future:
 
-- Configuration of custom fields per community. Meaning, each community would have its own specific custom fields that will make available to users when they submit a new record for review.
+- Configuration of custom fields per community. Meaning, each community would have its own specific custom fields that will be made available to users when they submit a new record for review.
 - Internal use fields, that will not be visible by end users in the UI nor in the REST API.
 - Applying permissions per-field.
 - Configuring custom fields using the UI, for example the _Backoffice_.
@@ -86,7 +86,7 @@ Along the RFC the following example use case will be used to exaplain the corres
 
 _At CERN, I want to choose the experiment to which the record belong to, assuming experiments come from a controlled vocabulary. In addition, I want to be able to filter the record search by experiment._
 
-> Note: Along this RFC configuration variables are prefixed with `RDM_`, this means that custom fields are being added to _records_. However, the same configuration variables will be available in communities and will be used in adding custom fields to them. Namely, `COMMUNITIES_CUSTOM_FIELDS` and `COMMUNITIES_CUSTOM_FIELDS_UI`.
+> Note: Along this RFC configuration variables are prefixed with `RDM_`, this means that custom fields are being added to _records_. However, the same configuration variables will be available in communities and will be used when adding custom fields to them. Namely, `COMMUNITIES_CUSTOM_FIELDS` and `COMMUNITIES_CUSTOM_FIELDS_UI`.
 
 ### Defining custom fields for an instance
 
@@ -112,13 +112,13 @@ RDM_CUSTOM_FIELDS = {
 }
 ```
 
-The `field_props` attribute is defining the properties that will be passed down to the Marshmallow field. In our example we have namely `required`, `validate` and `error_messages` that allow the instance administrator to configure custom behaviour, both in validation and error messages returned.
+The `field_props` attribute is defining the properties that will be passed down to the Marshmallow field. In our example, these properties are `required`, `validate` and `error_messages` that allow the instance administrator to configure custom behaviour, both in validation and error messages returned.
 
 **Namespacing**
 
 In the above configuration, a `RDM_CUSTOM_FIELDS_NAMESPACES` variable can be seen. This will allow fields to be uniquely identified and avoid collisions between vocabularies (e.g. Darwin Core, Dublin Core, etc.). This will also enable the expansion of the fields with an URI, which will be necessary in the serialization step.
 
-In the data model, the namespace will be prepended to the field name. For example, the above field would be referenced as `cern:experiment` in the record content. The namespace will be used when the field will be accessed through the programmatic API as well. For example, you would access the above field by doing `record.cern_experiment`.
+In the data model, the namespace will be prepended to the field name. For example, the above field would be referenced as `cern:experiment` in the record content. The namespace will be used when the field will be accessed through the programmatic API as well. For example, the above field would be accessed as follows: `record.cern_experiment`.
 
 ### Building new custom field types
 
@@ -275,7 +275,7 @@ Simple custom fields types are added to the record's data model and dumped in it
 
 The programmatic API to access records' relations is kept intact. For example, a field named `myrelationfield` would be accessed as `record.relations.myrelationfield`. However, a new class `MultiRelationsField` has been implemented to accept not only implementations of `RelationBase` but also `RelationsField`.
 
-`CustomFieldsRelation` is an implementation of `RelationsField` that injects vocabulary custom fields in the record's relations attribute. In addition, to avoid name collisions these new fields are prefixed with the fields defined namespace.
+`CustomFieldsRelation` is an implementation of `RelationsField` that injects vocabulary custom fields in the record's relations attribute. In addition, to avoid name collisions these new fields are prefixed with the fields' defined namespace.
 
 For example, the previously configured `experiments` custom field is accessed as `record.relations.cern_experiments`, while `record.relations.custom_fields` would give an attribute error.
 
@@ -416,7 +416,7 @@ In a similar manner, instance administrators can redefine in their RDM instance 
 
 The custom fields will be displayed in the _additional details_ section. Each custom fields section will be one different tab, containing all the corresponding fields. Note that required fields will be displayed in this section. However, every institution has their own UI design and it is already possible to override the default display by overriding the Jinja templates of these pages.
 
-**DRAFT MOCKUP** of the \_additional details\_\_ section:
+**DRAFT MOCKUP** of the _additional details_ section:
 
 ![](./0064/additional_details.png)
 
