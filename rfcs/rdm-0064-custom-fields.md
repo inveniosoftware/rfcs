@@ -312,7 +312,7 @@ The programmatic API to access records' relations is kept intact. For example, a
 
 `CustomFieldsRelation` is an implementation of `RelationsField` that injects vocabulary custom fields in the record's relations attribute. In addition, to avoid name collisions these new fields are prefixed with the fields' defined namespace.
 
-For example, the previously configured `experiments` custom field is accessed as `record.relations.cern_experiments`, while `record.relations.custom_fields` would give an attribute error.
+For example, the previously configured `experiments` custom field is accessed as `getattr(record.relations, "cern:experiments")`, while `record.relations.custom_fields` would give an attribute error.
 
 ```python
 class Record:
