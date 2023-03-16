@@ -13,10 +13,10 @@ Implementation details for a notification system to be used in InvenioRDM.
 As the product is getting larger and new features are added, it is hard to keep an overview of everything going on as a user. With the communities feature, certain tasks require an action to be executed by the user (f.e. accepting an incoming request for a community). This incoming request can easily get "lost", if a user does not explicitly check the community dashboard. Therefore, a notification system will not only solve this problem (and similar ones) but also increase user engagement by advertising the repository some more.
 
 It will take care of sending the notifications based on the configuration and user preferences (i.e. if the repository disables certain notifications or a user does not want to receive certain notifications, they should not be sent).
-In a first iteration, the user preferences may be neglected. They have to be specified and implemented first or the recipients function will have to take care of it explicitly.
 
-### Use Cases
-- Send notifications (see [table](#notifications))
+### Use Case
+
+- Send notifications for operations involving multiple users (see [table](#notification-examples))
 - Overridable notification templates
   - One template for each notification
   - Can be overridden via theme (like other templates)
@@ -33,256 +33,101 @@ In a first iteration, the user preferences may be neglected. They have to be spe
 ## Detailed design
 
 In this design, we describe:
-    
-- notification events
-- data payloads involved around a notification
-- delivery methods/backends for sending notifications to end users
-- configuration for connecting notifications to backends
-- notification management
 
-### Event
-Events are purely information based classes. These shall uniform the naming and ease the configuration process and readability.
-    
-```python
-@dataclass
-class Event:
-    """Base event."""
-    action: str
-    type: str
-    handling_key: str = f"{type}.{action}"
+- New `invenio-notifications` module
+    - Simple self-contained API that is business-logic agnostic
+    - Minimal dependencies, only for supporting different notification transfer backends (email, chat, etc.)
+    - Defines a common notification payload/datamodel
+- Utilities for configuration on services for building notifications payloads (receivers, data payload)
+    - Generates the list of recipients
+    - Takes into account user preferences, e.g.
+        - if they want to receive notifications at all
+        - what kind of notifications the want to receive
 
-@dataclass
-class CommunitySubmissionEvent(Event):
-    """Community related events."""
+### Datamodel/payload
 
-    type: ClassVar[str] = "community-submission"
-    handling_key: ClassVar[str] = "community-submission"
-
-@dataclass
-class CommunitySubmissionSubmittedEvent(CommunitySubmissionEvent):
-    """Record related events."""
-
-    action: ClassVar[str] = "submitted"
-    handling_key: ClassVar[str] = f"{CommunitySubmissionEvent.type}.{action}"
-```
-    
-### Notification
-A notification shall capture all the necessary information for the notification system. It shall have a `dumps` method, which will make it possible to be passed around in celery tasks.
-
+- Acts as a "client payload"
+- Keeps all the relevant data necessary for a notification to be dispatched via a backend
+- It must be JSON-serializeable so that it can be passed to Celery tasks.
 
 ```python
 @dataclass
 class Notification:
-    """Notification class."""
+    """Notification datamodel."""
 
-    type: str  # one of the registered notification types e.g comment_edit, new_invitation etc
-    data: dict  # depending on the type. dump of a record, community, etc.
-    recipients: List[dict]  # list of user dumps
-    trigger: dict  # info about who triggered (and dump thereof), if it was manual or automatic 
-    timestamp: datetime  # when the action happened
-    
-    def dumps(self):
-        """Make it serializable for passing around via celery."""
-        d = {k:v for k,v in self.items()}
-        d.update(self.__dict__)
-        return d
+    # Unique type identifier for the notification
+    type: str
+
+    # Actual subject/payload of the notification's objects, e.g. record,
+    # community, request, etc.
+    context: dict
+
+    # Recipients list
+    recipients: list[Recipient]
+
+    # Creation time of the notification
+    timestamp: datetime
+
+
+@dataclass
+class Recipient:
+    """Recipient datamodel."""
+
+    # Recipient information (e.g. expanded user/group)
+    data: dict
+
+    # The "rendering" template to be used for this recipient
+    template: str
+
+    # Backend delivery options/config
+    backends: list[Backend]
+
+
+@dataclass
+class Backend:
+    """Backend delivery datamodel."""
+
+    # Unique backend identifier ("email", "slack", "cern-notification")
+    id: str
+
+    # Options/parameters for the backend to deliver the notification
+    params: dict
 ```
 
-### Notification Backend
+### API
 
-A notification backend will receive all the information from the notification system through a notification (i.e. type of action/event, user who triggered,  recipients, community/record (based on action/event)) to construct a suitable notification. The backend itself should *not* have to perform any queries (ElasticSearch or database). Its only purpose should be to take the received information, create the payload for the notification and send it to the recipients.
-    
-    
-    
-```python
-```
-
-```python
-from abc import ABC, abstractmethod
- 
-class NotificationBackend(ABC):
-    id = None
-    """Unique id of the backend."""
-
-    def __init__(self, notification_manager: NotificationManager):
-        self.notification_manager = notification_manager
-        self.notification_manager.register(self)
-    
-    @abstractmethod
-    def send_notification(self):
-        """Here each concrete implementation will be able to consume the notification message."""
-        raise NotImplementedError()
-```
-
-For example, if a user wants to consume the message via an email notificaiton they will have to implement something similar to below:
-
-A general jinja template loader should make the life easier in the long run.
-```python
-class JinjaTemplateLoaderMixin():
-    """Used only in NotificationBackend classes."""
-    
-    template_folder = 'notifications'
-    
-    def _load_template(path):
-        try:
-            template = current_app.jinja_env.get_template(path)
-        except TemplateNotFoundError:
-            template = None
-
-        return template
-
-
-    def get_template(self, name):
-        # e.g /notifications/email/comment_edit.html
-        base_template = load_template(f"{template_folder}/{name}")
-        specific_template = load_template(f"{template_folder}/{self.id}/{name}")
-
-        if not specific_template and not base_template:
-            raise TemplateNotFoundError()
-
-        return specific_template or base_template
-
-```
-
-Now the email backend can get the templates in html and plaintext and render it accordingly.
-
-```python
-from invenio_mail.tasks import send_email
-
-class EmailNotificationBackend(NotificationBackend, JinjaTempateLoaderMixin):
-    
-    id = 'email'
-    
-    def _send_email(notification, template_html, template_txt):
-        mail_data = {}
-        mail_data["recipients"] = [r["email"] for r in notification.recipients]
-        mail_data["html_body"] = template_html.render(notification)
-        mail_data["html_plain"] = template_txt.render(notification)
-        ...
-        send_email(mail_data)
-
-    @shared_task
-    def send_notification(notification):
-        """Here each concrete implementation will be able to consume the notification message."""
-        notification_tpl_html = self.get_template(notification.type + ".html")
-        notification_tpl_txt = self.get_template(notification.type + ".txt")
-        self._send_email.apply_async(args=[notification, template_html, template_txt])
-```
-
-A basic text notification backend might have their own templates or simply construct a message on the fly. This is very specific to the backend.
-
-```python
-class TextNotificationBackend(NotificationBackend):
-    """Send notification as a mobile text."""
-    
-    id = 'text'
-
-    def _send_text(notification_str):
-        send_sms(notification_str)
-        pass
-    
-    @shared_task
-    def send_notification(self, notification):
-        """Here each concrete implementation will be able to consume the notification message."""
-        notification_str = self.serialize(notification)
-        self._send_text(notification_str)
-```
-
-
-### Notification Manager
-Notification manager shall take care of (de)registering backends and start tasks of sending notifications. It will also set the recipients of the notification by calling the recipients function.
+A Notification manager/client will be used for sending notifications as a Celery task.
 
 ```python
 class NotificationManager:
 
-    def __init__(self, config):
-        self._config = config
-        self._backends = dict<str, NotificationBackend>
-        self._notification_policy = config.notification_policy
+    def __init__(self, backends):
+        self.backends = backends
 
-    def _backend_exists(self, backend_id):
-        """Check if backend is registered."""
-        return backend_id in self._backends
+    def validate(self, notification):
+        ...
 
+    # Client
+    def broadcast(self, notification: Notification, eager=False):
+        """Broadcast a notification via a Celery task."""
+        self.validate(notification)
+        task = broadcast_notification.si(notification)
+        return task.apply() if eager else task.delay()
 
-    def validate_policy(self):
-        """Validate policy to make sure no backend is used without being specified."""
-        for event_type, event_policy in self._notification_policy.items():
-            if not backend_config.get("default_recipients"):
-                raise NotificationError("Default recipients function must be defined")
-
-            backend_configs = event_policy.get("backends", [])
-            for backend_config in backend_configs:
-                backend_cls = backend_config.get("cls")
-                if not backend_cls:
-                    raise NotificationError("Backend_cls must be defined")
-                backend_id = backend_config.get("cls").id
-                if not self._backend_exists(backend_id):
-                    raise NotificationBackendNotFoundError(backend_id, type_=event_type)
-
-                
-    def _dispatch_notification(self, notification, backend, **kwargs):
-        """Start task for sending."""
-        try:
-            backend.send_notification.apply_async(
-                args=[notification.dumps()],
-            )
-
-        except Exception as e:
-            current_app.logger.warning(e)
-            raise e
-
-    @shared_task
-    def broadcast(self, notification):
-        """Broadcast notification to backends according to event policy."""
-        event_policy = self._notification_policy.get(notification.type)
-        if event_policy is None:
-            current_app.logger.warning(NotificationTypeNotFoundError(notification.type))
-            return
-
-        for backend_config in event_policy.get("backends", []):
-            backend_id = backend_config["cls"]
-            backend = self._backends.get(backend_id)
-            if backend is None:
-                current_app.logger.warning(NotificationBackendNotFoundError(backend_id, type_=notification.type))
-                continue
-
-            _recipients_func = backend_config.get("recipients") if backend_config.get("recipients") else event_policy["default_recipients"](notification) 
-            notification.recipients = _recipients_func(notification)
-      
-            self._dispatch_notification(notification, backend)
-
-    @shared_task
-    def notify(self, notification, backend_id):
-        """Set notification and notify specific backend.
-
-        Will pass the key for the specific backend to notify.
-        """
-        backend = self._backends.get(backend_id)
-        if backend is None:
-            current_app.logger.warning(NotificationBackendNotFoundError(backend_id))
-            return
-
-        # TODO: Fetch recipients based on notification.type or let caller set them?
-        self._dispatch_notification(notification, backend)
-
-    def register(self, backend):
-        """Register backend in manager."""
-        if self._backend_exists(backend.id):
-            raise NotificationBackendAlreadyRegisteredError(backend.id)
-        self._backends[backend.id] = backend
-
-    def deregister(self, backend):
-        """Deregister backend in manager."""
-        del self._backends[backend.id]
+    # Consumer
+    def handle(self, notification: Notification):
+        """Handle a notification."""
+        for recipient in notification.recipients:
+            for backend in recipient.backends:
+                dispatch_notification(backend, recipient.data, notification.data)
 ```
-    
-The broadcast and notify functions are then available as tasks
+
+The `broadcast_notification` and `dispatch_notification` tasks will be handling retries:
 
 ```python
 # tasks.py
 @shared_task
-def broadcast(notification):
+def broadcast(notification: Notification):
     """Broadcast notification to backends according to event policy."""
     current_notifications_manager.broadcast(notification)
 
@@ -293,143 +138,262 @@ def notify(notification, backend_id):
     Will pass the key for the specific backend to notify.
     """
     current_notifications_manager.notify(notification, backend_id)
-
 ```
 
+The final usage looks like the following:
 
-### Configuration
-    
-Making the provided functionality configurable is a key part. The available notification backends as well as the notification policy can be defined. Every entry in the policy contains the event as key and an event policy as value.
-Each event policy must define a function for the default recipients. Additionally, backends for an event may be defined, which can also override the recipients function.
-    
-These config variables will then be loaded by the manager and validated.
+```python
+from invenio_notifications import current_notifications
+
+notification = ...  # see "Building notifications"
+current_notifications.broadcast(notification)
+```
+
+### Backends
+
+A notification backend will receive all the information from the notification system through a notification (i.e. type of action/event, user who triggered,  recipients, community/record (based on action/event)) to construct a suitable notification. The backend itself should *not* have to perform any queries (ElasticSearch or database). Its only purpose should be to take the received information, create the payload for the notification and send it to the recipients.
+
+```python
+from abc import ABC, abstractmethod
+
+class Backend(ABC):
+
+    id = None
+    """Unique ID of the backend."""
+
+    @abstractmethod
+    def send(self, notification, recipient, params):
+        """Here each concrete implementation will be able to consume the notification message."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def validate(self, notification, recipient, params):
+        """Validate notification message."""
+        raise NotImplementedError()
+```
+
+For example, if a user wants to consume the message via an email notification they will have to implement something similar to below:
 
 
 ```python
-    
-# config.py
-    
-class NotificationConfig(ConfiguratorMixin):
-    backends = FromConfig("NOTIFICATIONS_BACKENDS", [])
-    notification_policy = FromConfig("NOTIFICATIONS_POLICY", {})
+from invenio_mail.tasks import send_email
 
+class EmailBackend(Backend):
 
-# NOTIFICATIONS_CONFIG = NotificationConfig
+    id = "email"
 
-NOTIFICATIONS_BACKENDS = [
-    EmailNotificationBackend,
-]
+    def send(self, notification: Notification, recipient: Recipient, params: Backend):
+        """Mail sending implementation."""
+        mail_data = {}
+        ctx = {
+            "notification": notification,
+            "recipient": recipient,
+        }
 
-NOTIFICATIONS_DEFAULT_SUBJECT = _("New notification from repository")
-
-
-NOTIFICATIONS_POLICY = {
-    CommunitySubmissionSubmittedEvent.handling_key: {
-        'default_recipients': lambda notification: [],
-        'backends': [
-            {
-                'cls': EmailNotificationBackend,
-                'recipients': lambda notification: [],
-            },
-        ],
-    },
-    CommunitySubmissionCreatedEvent.handling_key: {
-        'default_recipients': lambda notification: some_func(notification),
-        'backends': [
-            {
-                'cls': TextNotificationBackend,
-            },
-            {
-                'cls': TextNotificationBackend,
-            },
-        ],
-    },
-    ...
-}  
+        mail_data["recipients"] = [recipient["email"]]
+        template = get_template(recipient.template)  # see "Templating" below
+        mail_data["html_body"] = template_html.render(**ctx)
+        mail_data["plain_body"] = template_txt.render(**ctx)
+        resp = send_email(mail_data)
+        return resp  # TODO: what would a "delivery" result be
 ```
 
-Each module that triggers events (via service calls), should also expose a default notifications policy config for these events.
-    
-All these configurations come together in invenio_app_rdm.config or invenio.cfg.
-```python
-# invenio_communities config.py
-COMMUNITY_NOTIFICATIONS_POLICY = {
-    CommunitySubmissionSubmittedEvent.handling_key: {
-        'default_recipients': lambda notification: [],
-        'backends': [
-            {
-                'cls': EmailNotificationBackend,
-                'recipients': lambda notification: [],
-            },
-        ],
-    },
-}
-    
+#### Templating
 
-# invenio.cfg
-from invenio_communities.config import COMMUNITY_NOTIFICATIONS_BACKENDS, COMMUNITY_NOTIFICATIONS_POLICY
-from other_module.config import OTHER_MODULE_NOTIFICATIONS_POLICY
-    
-NOTIFICATIONS_BACKENDS = {
-    **COMMUNITY_NOTIFICATIONS_BACKENDS,
-}
-NOTIFICATIONS_POLICY = {
-    **COMMUNITY_NOTIFICATIONS_POLICY,
-    **OTHER_MODULE_NOTIFICATIONS_POLICY,
-}
-```
-
-### Registration/Initialization
-
+A generic Jinja template loader should make life easier for backends to integrate templates and take into account locale:
 
 ```python
+class JinjaTemplateLoaderMixin:
+    """Used only in NotificationBackend classes."""
 
-# ext.py
+    template_folder = 'notifications'
 
-cfg = NotificationConfig.build(app)
-        manager = NotificationManager(
-            config=cfg,
-        )
-        for id, backend_cls in cfg.backends.items():
-            manager.register(backend_cls())
-        
-        manager.validate_policy()
-        self.manager = manager
+    def _load_template(path):
+        try:
+            template = current_app.jinja_env.get_template(path)
+        except TemplateNotFoundError:
+            template = None
+        return template
 
+    def get_template(self, recipient: Recipient):
+        # e.g /notifications/email/comment_edit.html
+        base_template = self._load_template(f"{template_folder}/{recipient.template}")
+        specific_template = self._load_template(f"{template_folder}/{self.id}/{recipient.template}")
 
-# actions.py
+        template = specific_template or base_template
+        if not template:
+            raise TemplateNotFoundError()
 
-my_notification = Notification(
-    data={},
-    notification_type='comment_create',
-)
+        # Take locale into account
+        locale = recipient.data.get("locale")
+        if locale != "en":
+            template += f".{locale}"
 
-# if user wants to notify all registered backends
-current_notification.broadcast(my_notification)
-
-# if user wants to use specific backend
-current_notification.notify(
-    notification=my_notification, 'email')
-
+        return template
 ```
 
+### Building notifications
 
-#### Notifications
-| Action                       | Who triggers                 | Who receives           |
-|------------------------------|------------------------------|------------------------|
-| Comment create      | Creating user    | All involved in conversation                  |
-| Comment edit        | Editing user     | All involved in conversation                  |
-| Comment delete      | Deleting user    | All involved in conversation                  |
-|       |     |                  |
-| Submission create      | Creating user     | Community owners/managers                 |
-| Submission accept      | Accepting user    | User who created submission               |
-| Submission decline     | Declining user    | User who created submission               |
-| Submission edit        | Editing user      | Either user who created submission or Community owners/managers (depends on who edited)                 |
-|       |     |                  |
-| Invitation accept      | Accepting user    | User who created invitation               |
-| Invitation decline     | Declining user    | User who created invitation               |
-| Invitation expire      | System            | User who created invitation               |
+The API described above, accepts a `Notification` object as its main payload. Generating this object is something that is left to the client, which in our case is usually a service method. We want to provide a set of utilities that will streamline this process and make it configurable.
 
+Another consideration is that different parts of the platform contribute different business rules for:
+
+- types of notifications and their templates
+- the set of recipients for a notification
+- individual notification preferences for each recipient
+- what notification backends (delivery methods) should be used for a recipient
+
+To encapsulate all this functionality we're introducing a set of classes that can be composed to build individual notification builders for each type of notification.
+
+```python
+class NotificationBuilder:
+
+    payload: list[PayloadGenerator]
+    recipients: list[RecipientGenerator]
+    backends: list[BackendGenerator]
+
+    def build(context: dict) -> Notification:
+        ...
+```
+
+Notification builder implementation for community record inclusion request:
+
+```python
+# invenio_requests/notifications.py
+class CommunityRecordInclusionNotificationBuilder(NotificationBuilder):
+
+    payload = [
+        RequestPayload,
+        CommunityPayload,
+        RecordPayload,
+    ]
+
+    recipients = [
+        RequestRecipients,
+        CommunityRecipients,
+        UserRecipient,
+    ]
+
+    backends = [
+        UserEmailBackend,
+    ]
+
+#
+# Payload
+#
+# invenio_requests/notifications.py
+class RequestPayload:
+    def __call__(self, request=None, **kwargs):
+        return {"request": request.to_dict()}
+
+# invenio_rdm_records/notifications.py
+class RecordPayload:
+    def __call__(self, record=None, **kwargs):
+        return {"record": record.to_dict()},
+
+# invenio_communities/notifications.py
+class CommunityPayload:
+    def __call__(self, community=None, **kwargs):
+        return {"community": community.to_dict()}
+
+#
+# Recipients
+#
+# invenio_requests/notifications.py
+class RequestRecipients:
+    def __init__(self, include_creator=True, include_receiver=True):
+        self.include_creator = include_creator
+        self.include_receiver = include_receiver
+
+    def __call__(self, notification, recipients: list):
+        ret = []
+        if self.include_creator:
+            ret.append(request.created_by.resolve())
+        if self.include_receiver:
+            ret.append(request.receiver.resolve())
+        return ret
+
+# invenio_communities/notifications.py
+class CommunityRecipients:
+    def __init__(self, roles=None):
+        self.roles = roles
+
+    def __call___(self, notification, recipients: list):
+        ret = []
+        for rec in recipients:
+            if isinstance(rec, Community):
+                comm = rec
+                members = Member.get_members(comm.id)
+                for m in members:
+                    if not m.user_id:
+                        continue
+                    if self.roles and m.role not in self.roles:
+                        continue
+                    user = m.relations.user.dereference()
+                    notif_pref = user.preferences["notifications"]
+                    com_pref = notif_pref.get(comm.id)
+                    if com_pref:
+                        # check if notification is enabled/disabled for the member
+                        # if ...:
+                        #     continue
+                    ret.append(user)
+            else:
+                ret.append(rec)
+        return ret
+
+# invenio_users_resources/notifications.py
+class UserRecipient:
+    def __call__(self, notification, recipients: list)
+        ret = []
+        for rec in recipients:
+            if isinstance(rec, User):
+                if rec.preferences["notifications"]["enabled"]
+                    ret.append(rec.dump())
+            else:
+                ret.append(rec)
+        return ret
+
+#
+# Backends
+#
+# invenio_users_resources/notifications.py
+class UserEmailBackend:
+    def __call__(self, notification, recipients: list)
+        for rec in recipients:
+            user = rec.data
+            rec.backends.append({
+                "backend": "email",
+                "to": f"{user.profile.full_name} <{user.email}>",
+            })
+
+#
+# Usage in a service method
+#
+uow.register(NotificationOp(CommunityRecordInclusionNotificationBuilder.build(
+    {
+        "request": request,
+        "community": community,
+        "record": record,
+    }
+)))
+```
+
+#### Notification examples
+
+| Action             | Who triggers   | Who receives                                                                            |
+| ------------------ | -------------- | --------------------------------------------------------------------------------------- |
+| Comment create     | Creating user  | All involved in conversation                                                            |
+| Comment edit       | Editing user   | All involved in conversation                                                            |
+| Comment delete     | Deleting user  | All involved in conversation                                                            |
+|                    |                |                                                                                         |
+| Submission create  | Creating user  | Community owners/managers                                                               |
+| Submission accept  | Accepting user | User who created submission                                                             |
+| Submission decline | Declining user | User who created submission                                                             |
+| Submission edit    | Editing user   | Either user who created submission or Community owners/managers (depends on who edited) |
+|                    |                |                                                                                         |
+| Invitation accept  | Accepting user | User who created invitation                                                             |
+| Invitation decline | Declining user | User who created invitation                                                             |
+| Invitation expire  | System         | User who created invitation                                                             |
 
 ## Example
 
@@ -445,39 +409,14 @@ current_notification.notify(
 
 > How should this feature be introduced and taught to existing Invenio users?
 
-This should probably become a module of its own, as it is kept very general without any specific requirements for other invenio modules (except celery for starting tasks).
-
-Other modules with the need of sending notifications can then import it.
-The config should happen in `invenio-app-rdm`, as it knows all the underlying modules and events going on.
-    
-## Drawbacks
-
-> Why should we *not* do this? Please consider the impact on teaching Invenio, on the integration of this feature with other existing and planned features, on the impact of the API churn on existing apps, etc.
-
-> There are tradeoffs to choosing any path, please attempt to identify them here.
-
-With regards to the probable implementation of the event bus, it is not clear how event types and actions will be implemented/named and it may cause a refactoring.
-
-Current service methods will have to be adapted to broadcast notifications.
-
-    
 ## Alternatives
 
-> What other designs have been considered? What is the impact of not doing this?
-
-> This section could also include prior art, that is, how other frameworks in the same domain have solved this problem.
-
 An alternative is to rely on the implementation of the event bus and register methods. Though it is not known which data will be passed along for the events and there may be some missing data for the notification system.
-    
-If we do not implement this, each service method with the need of notifiying certain users, will have to take care of putting together a proper notification content, render it, and figure out on which channel to reach the users.
 
 ## Unresolved questions
 
-> Optional, but suggested for first drafts. What parts of the design are still TBD? Use it as a todo list for the RFC.
-    
 Tracking success/failure of delivery is not taken care of. If a task gets stuck or dies, there will not be any mention of this.
+
 ## Resources/Timeline
 
-> Which resources do you have available to implement this RFC and what is the overall timeline?
-
-Discussion and implemenation during sprint for v9.1
+Discussion and implemenation during sprint for MS5.
