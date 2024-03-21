@@ -10,13 +10,13 @@ Overall design for management of persistent identifiers in Invenio RDM.
 
 ## Motivation
 
-- As a user, I want to have a DOI for my upload, so that I I can cite my research.
-- As a admin, I want to manage multiple DOI prefixes, so that I I don’t need a repository installation per prefix.
+- As a user, I want to have a DOI for my upload, so that I can cite my research.
+- As an admin, I want to manage multiple DOI prefixes, so that I don’t need a repository installation per prefix.
 - As a admin, I want to assign both DOIs and Handles for uploads to my repository, so that I I can fulfill business requirements.
 - As a admin, I want to have a Handle for one upload and a DOI for another upload, so that I I don’t need a repository installation per PID scheme.
-- As a user, I want to share a dataset that already have a DOI, so that I I can collect all my research one place.
+- As a user, I want to share a dataset that already has a DOI, so that I can collect all my research in one place.
 - As a admin, I want to have tombstone pages, so that I I can remove content.
-- As a admin, I want to take over management of a dataset with a DOI from another repository, so that I records can be migrated between repositories..
+- As an admin, I want to take over management of a dataset with a DOI from another repository, so that records can be migrated between repositories..
 - As a admin, I want to customize which internal PID scheme is used, so that I I can continue my existing identifier scheme..
 - As a admin, I want to ensure all records have a DOI, so that I all records have an DOI.
 - As a user, I want to reserve a DOI prior to uploading my report, so that I I can include the DOI in the report.
@@ -73,7 +73,7 @@ The external persistent identifiers can either be *managed* or *unmanaged*.
 - **Managed PIDs** means that it is the repository’s job to register, update and maintain the PID in an external registry.
 - **Unmanaged PIDs** means that another repository takes care of registering, updating and maintaining the PID in an external registry.
 
-This allows e.g. dataset with an existing DOI to be shared in the repository, with the repository having take control and manage the DOI.
+This allows e.g. a dataset with an existing DOI to be uploaded in the repository and the repository to take control and manage the DOI. Another dataset with an existing DOI can also be uploaded in the repository without ceding DOI control. Its original DOI provider would still manage the DOI for that dataset.
 
 InvenioRDM must know for each external PID if it’s a managed or unmanaged DOI, since a single DOI from one prefix may be migrated to another repository (i.e. you may or may not manage all DOIs in a prefix).
 
@@ -83,11 +83,11 @@ A key issue in the management of persistent identifiers is when to assign which 
 - Internal PIDs are reserved as soon as a deposit record is created.
 - External PIDs are only registered when the deposit record is published.
 
-A record must be able to explicitly defined which external PIDs should be registered with a default behaviour in case nothing is specified.
+A record must be able to explicitly define which external PIDs should be registered with a default behaviour in case nothing is specified.
 
 #### Tombstones
 
-All persistent identifiers must support having a tombstone pages.
+All persistent identifiers must support having tombstone pages.
 
 ### References
 
