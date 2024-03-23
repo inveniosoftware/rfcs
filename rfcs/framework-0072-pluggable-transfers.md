@@ -9,20 +9,50 @@
 Currently the transfer types are fixed to Local, Fetch and Remote and can not be extended.
 Users might benefit from having this system extensible so that they can write/use
 their own transfer types.
-We would like to implement other types - Multipart and S3Copy. Pluggable mechanism
-will 
 
 ## Motivation
 
-> Why are we doing this? What user stories does it support? What is the expected outcome?
+We would like to implement at least one additional transfer type - Multipart. This
+transfer type will allow users to upload big files split into multiple parts and
+will be contained as a core functionality.
 
-- As a ..., I want to ..., so that I ... .
+Another example might be a S3Copy transfer type, which would copy the file between
+two S3 buckets directly on S3 cluster, without passing through invenio server.
 
 ## Detailed design
 
-> This is the bulk of the RFC.
+All the current functionality is in `transfer.py` and related modules. The `TransferType`
+is a non-extendable enum, transfers extensions of `BaseTransfer` and not pluggable
+(if/then/else inside the `Transfer` class).
 
-> Explain the design in enough detail for somebody familiar with the framework to understand, and for somebody familiar with the implementation to implement. This should get into specifics and corner-cases, and include examples of how the feature is used. Any new terminology should be defined here.
+Proposal:
+
+* Change the `TransferType` from enum to a normal class. Create constants for the built-in
+  types - turn `TransferType.LOCAL` to `TRANSFER_TYPE_LOCAL`
+* Create a `TransferRegistry` class modelled after ServiceRegistry. Add `current_transfer_registry`
+  proxy.
+* Modify the `Transfer` class to use the registry
+* Modify the sources to use the updated class and constants
+
+* Fix the `dump_status` method on schema. The current implementation says:
+```
+    def dump_status(self, obj):
+        """Dump file status."""
+        # due to time constraints the status check is done here
+        # however, ideally this class should not need knowledge of
+        # the TransferType class, it should be encapsulated at File
+        # wrapper class or lower.
+```
+
+Approaches to fix this (to be decided which one to take):
+
+1. Create a `status=ModelField()` on the FileRecord class, with values `pending`, `completed`, `aborted`, `failed` .
+   The value of the field would be stored inside the database in the file record
+2. Create a `status=StatusSystemField()` that would fetch/store the status from the file's metadata (.model.json)
+3. Create a `status=StatusSystemField()` that would get the file's transfer and delegate the status to it.
+
+The first two options add a value stored to the database but are cleaner, #3 would create a reference
+from invenio_records_resources.records to invenio_records_resources.services.files.
 
 ## Example
 
