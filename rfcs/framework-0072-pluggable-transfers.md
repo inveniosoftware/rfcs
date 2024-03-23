@@ -47,9 +47,9 @@ Proposal:
 Approaches to fix this (to be decided which one to take):
 
 1. Create a `status=ModelField()` on the FileRecord class, with values `pending`, `completed`, `aborted`, `failed` .
-   The value of the field would be stored inside the database in the file record
-2. Create a `status=StatusSystemField()` that would fetch/store the status from the file's metadata (.model.json)
-3. Create a `status=StatusSystemField()` that would get the file's transfer and delegate the status to it.
+   The value of the field would be stored inside the database in the file record as a new database column.
+2. Create a `status=StatusSystemField()` that would take the status from file's metadata (.model.json)
+3. Create a `status=StatusSystemField()` that would get the file transfer and delegate the status query to it.
 
 The first two options add a value stored to the database but are cleaner, #3 would create a reference
 from invenio_records_resources.records to invenio_records_resources.services.files.
