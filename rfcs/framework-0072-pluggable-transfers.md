@@ -64,6 +64,13 @@ The only alternative is having separate API endpoints for handling the use cases
 
 - [ ] Decide how the `status` field should be implemented
 
+**Alex:**
+For the decision on the status field, I have a slight preference for #3 (i.e. computing/querying dynamically instead of storing), since I could imagine the BaseTransfer sub-classes, implementing the logic... Though I see that this introduces a dependency in the wrong direction... Would it make sense to maybe remove status from the record class, and just compute/dump it on the service marshmallow schema? Maybe a 3rd person without all the past implementations baggage could comment on a cleaner solution 🙂
+
+Then another less critical concern:
+ 
+Maybe there should be a way to configure different transfer types per file service... I could imagine e.g. not wanting to have remote files for community logos. But TBH, given how hidden the feature is, we could roll with having everything available by default across all services, and then later on adding the config if we see weird cases emerging
+
 ## Resources/Timeline
 
 Both CESNET and Munster need multipart upload that depends on this feature in a short time (May 2024). Both CESNET and Munster are willing to put their resources into the implementation and testing.
