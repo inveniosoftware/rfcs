@@ -138,6 +138,24 @@ not record owner?):
     ]
 ```
 
+- [ ] MultipartStorageExt
+
+In order to make direct multipart upload to remote storage working we need a PyFS storage
+to implement multipart aware methods. These are currently summarized in the MultipartStorageExt
+interface that lives in invenio-records-resources - 
+[MultipartStorageExt class in pull request](https://github.com/mesemus/invenio-records-resources/pull/3/files#diff-ab7d7ef448eaae0f109622e167d9168d7f0ad56dbba383d6d681b9cc17b62bcfR14)
+
+
+We can not directly implement this interface in storage backends (for example invenio-s3) as
+it would introduce a dependency in the wrong direction.
+
+Proposal: either move the MultipartStorageExt to invenio-files-rest/storage/pyfs or do not check
+for the interface but just check for the implemented methods (currently implemented this way in POC
+implementation - see for example 
+[check for multipart_set_content method](https://github.com/mesemus/invenio-records-resources/pull/3/files#diff-ab7d7ef448eaae0f109622e167d9168d7f0ad56dbba383d6d681b9cc17b62bcfR177) )
+
+
+
 ## Resources/Timeline
 
 Both CESNET and Munster need multipart upload that depends on this feature in a short time (May 2024). 
