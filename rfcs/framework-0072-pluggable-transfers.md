@@ -64,13 +64,81 @@ The only alternative is having separate API endpoints for handling the use cases
 
 - [ ] Decide how the `status` field should be implemented
 
-**Alex:**
+**Alex' suggestion**
 For the decision on the status field, I have a slight preference for #3 (i.e. computing/querying dynamically instead of storing), since I could imagine the BaseTransfer sub-classes, implementing the logic... Though I see that this introduces a dependency in the wrong direction... Would it make sense to maybe remove status from the record class, and just compute/dump it on the service marshmallow schema? Maybe a 3rd person without all the past implementations baggage could comment on a cleaner solution 🙂
 
-Then another less critical concern:
+- [ ] Alex: Then another less critical concern:
  
-Maybe there should be a way to configure different transfer types per file service... I could imagine e.g. not wanting to have remote files for community logos. But TBH, given how hidden the feature is, we could roll with having everything available by default across all services, and then later on adding the config if we see weird cases emerging
+Maybe there should be a way to configure different transfer types per file service... 
+I could imagine e.g. not wanting to have remote files for community logos. 
+But TBH, given how hidden the feature is, we could roll with having everything available 
+by default across all services, and then later on adding the config if we see weird 
+cases emerging
+
+- [ ] Clarify the "storage_class" vs "transfer_type"
+
+It seems that inside invenio_files the storage_class was meant to specify
+the details of the storage backend (as the tests suggest, at least) - for example
+'A' as 'Archive'.
+
+In invenio_records_resources, the storage_class on the initial schema means the type of 
+transfer that will be used (Local, Fetch, Remote). This is independent of the storage
+backend and is a bit confusing.
+
+- [ ] FileSchema.uri vs. links section
+
+For the initialization of files, 'uri' can be used to specify the location of the file
+for REMOTE/FETCH transfers. Later on, clients can use this URI for these transfers to get
+a direct access to the referenced data.
+
+During "dumping" the file record, a links section with `content` uri is created. 
+This is a bit confusing as clients do not know which URL should be used.
+
+Proposal: keep the uri only inside the initial file record. Do not serialize it
+afterwards. Clients should use the links section for all the URIs. The content
+url can return a HTTP 302 redirect to the actual file location. This way counters
+will work as well.
+
+- [ ] FETCH transfer type and private URIs
+
+The FETCH transfer type is used to fetch the file from a remote location. The uri
+of the external location is visible to anyone who has a read access to the record,
+not just the uploader. As the uri might contain credentials (e.g. S3 signed URL),
+this might be a security issue.
+
+Proposal: do not serialize the uri of the FETCH transfer type. the fetch_file task
+would have to be changed to not to use the service but fetch the uri directly.
+
+- [ ] IfFileIsLocal generators
+
+The permissions in https://github.com/inveniosoftware/invenio-records-resources/blob/master/invenio_records_resources/services/files/generators.py#L27
+take into account only the files with storage class (== transfer type) "L". This means that
+the permissions will fail for "M" (Multipart transport) files. Is this intended?
+
+The same problem is in invenio-rdm-records/services/generators.py
+
+Proposal: either change the meaning of "Locality" and keep the permissions as they are
+or change the permissions to take into account all the files. Example from RDM that I do 
+not understand (can_draft_set_content_files - why there is the can_review permission and 
+not record owner?):
+
+```python
+    can_draft_create_files = can_review
+    can_draft_set_content_files = [
+        # review is the same as create_files
+        IfFileIsLocal(then_=can_review, else_=[SystemProcess()])
+    ]
+    can_draft_get_content_files = [
+        # preview is same as read_files
+        IfFileIsLocal(then_=can_draft_read_files, else_=[SystemProcess()])
+    ]
+    can_draft_commit_files = [
+        # review is the same as create_files
+        IfFileIsLocal(then_=can_review, else_=[SystemProcess()])
+    ]
+```
 
 ## Resources/Timeline
 
-Both CESNET and Munster need multipart upload that depends on this feature in a short time (May 2024). Both CESNET and Munster are willing to put their resources into the implementation and testing.
+Both CESNET and Munster need multipart upload that depends on this feature in a short time (May 2024). 
+Both CESNET and Munster are willing to put their resources into the implementation and testing.
