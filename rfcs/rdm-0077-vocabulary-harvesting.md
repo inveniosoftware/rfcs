@@ -14,6 +14,7 @@ See also [RFC Job system](./rdm-0076-job-system.md)
 - As an admin I want to control the job schedule
 - As an admin I want to be able to update vocabularies from external sources
     - As an admin I want to see the state of such jobs in an administrative dashboard (see logs and general stats as well)
+- As an admin I want to deprecate a vocabulary.
 - As a user I want to always use the latest vocabularies
 - As a librarian I want to run jobs manually
 - As a librarian I want to see the status of runs
@@ -127,6 +128,9 @@ Tasks:
 #### Edit an entry
 
 ![](./0077/upload_995d234f3af0d610d9347954d3a4eb56.png)
+
+#### Deprecate an entry
+![](./0077/deprecate.png)
 
 #### Needs
 
@@ -245,6 +249,14 @@ Multi-step operation:
 4. the old value can be deleted
 
 #### Updating of relations
+
+#### Deprecation Behavior
+
+When a property is marked as deprecated, it will no longer appear in search results and cannot be selected for creating new records or modifying existing ones by regular users. The deprecated_by field is optional and can be used to indicate one or more properties that supersede the deprecated value. Importantly, the deprecated_by field is for reference purposes only and is intended for administrators. Populating the deprecated_by field does not affect records that already use the deprecated property; those records will remain unchanged.
+
+Administrators, however, will retain the ability to view, select, and modify deprecated values when necessary. This will be managed via permissions, ensuring that only authorized users can interact with deprecated properties. A new tag, `non-searchable`, will also be introduced for vocabularies. When applied, this tag will prevent a value from appearing in general search results for regular users, but administrators will still be able to access and modify these values.
+
+Finally, deprecated values should provide the option for reactivation. Administrators will have the ability to restore deprecated values to active status if required.
 
 ---
 
