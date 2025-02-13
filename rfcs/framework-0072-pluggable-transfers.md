@@ -486,12 +486,9 @@ On front-end:
 
 Having separate API endpoints for handling the use cases above. This RFC provides a cleaner solution.
 
-For the global `window.invenio` drawback, there's probably a possibility of a prop-based approach to pass the correct
-services to the form app. `FilesUploader` field could be passed in using `react-overridable` by putting
-desired component to `mapping.js`. But it is unclear how to easily configure server-side the correct services (DepositFilesService, DepositFilesAPIClient) by site admins that way, as it is all just JS objects.
-
-For the global `window.invenio drawback`, a prop-based approach could potentially be used to pass the correct services to the form app. The `FilesUploader` field could be provided via `react-overridable` by mapping the desired component in `mapping.js`. That would avoid the need for an extra webpack entrypoint and access to global state altogether. However, it remains unclear how site administrators could easily configure the correct services server-side (e.g., DepositFilesService, DepositFilesAPIClient), as they are purely JavaScript objects.
-
+For the global `window.invenio drawback`, a prop-based approach could potentially be used to pass the correct services to the form app. The `FilesUploader` field could be provided
+via `react-overridable` by mapping the desired component in `mapping.js`. That would avoid the need for an extra webpack entrypoint and using the global state altogether. However,
+it remains unclear how site administrators could easily configure the correct services server-side (e.g., DepositFilesService, DepositFilesAPIClient), as they are purely JavaScript objects.
 
 ## Unresolved questions
 
