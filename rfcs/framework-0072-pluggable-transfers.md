@@ -311,7 +311,7 @@ methods that the `Transfer` class will call:
 
 ## Front-end layer
 
-### **Current State**  
+### **Current implementation**  
 
 Currently, most of the file upload UI is part of the [`invenio-rdm-records` deposit](https://github.com/inveniosoftware/invenio-rdm-records/tree/master/invenio_rdm_records/assets/semantic-ui/js/invenio_rdm_records/src/deposit) package.  
 
@@ -438,6 +438,23 @@ Uppy integration could be enabled by registering it from a [Webpack Files UI ent
 ```python
 FILES_UI_ENTRYPOINT = "invenio-app-rdm-files-uppy"
 ```
+
+#### UI workflow
+
+Default dashboard state:
+![Screenshot 2025-02-13 at 8 57 20](https://github.com/user-attachments/assets/85319625-7510-4482-b314-64eac835fc73)
+
+Files chosen for upload:
+![Screenshot 2025-02-13 at 9 07 20](https://github.com/user-attachments/assets/eb1810d5-fd27-4612-9de7-ad028c78c1ca)
+
+Multipart upload in progress:
+![Screenshot 2025-02-13 at 9 07 38](https://github.com/user-attachments/assets/c7be5987-7848-4322-9baf-af8cd9a28e9b)
+
+Upload complete:
+![Screenshot 2025-02-13 at 9 07 55](https://github.com/user-attachments/assets/a5820012-a16a-4270-97ee-82d1392ad948)
+
+Add one more file that fails to upload:
+![Screenshot 2025-02-13 at 9 08 58](https://github.com/user-attachments/assets/252826f3-fb66-44b2-a211-4a72bb0d2564)
 
 ## Other Examples
 
