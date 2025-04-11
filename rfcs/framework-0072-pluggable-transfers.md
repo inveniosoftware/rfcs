@@ -323,76 +323,22 @@ For `invenio-app-rdm`, [there is no way to change](https://github.com/inveniosof
 
 The [DepositFilesService](https://github.com/inveniosoftware/invenio-rdm-records/blob/master/invenio_rdm_records/assets/semantic-ui/js/invenio_rdm_records/src/deposit/api/DepositFilesService.js) depends on the [DepositApiClient](https://github.com/inveniosoftware/invenio-rdm-records/blob/master/invenio_rdm_records/assets/semantic-ui/js/invenio_rdm_records/src/deposit/api/DepositApiClient.js) to interact with Invenio’s file REST APIs. This API client is configured similarly to `DepositFilesService`, and in `invenio-app-rdm`, it always defaults to [`RDMDepositApiClient`](https://github.com/inveniosoftware/invenio-rdm-records/blob/master/invenio_rdm_records/assets/semantic-ui/js/invenio_rdm_records/src/deposit/api/DepositApiClient.js), which also cannot be changed.  
 
-To switch to a different file upload form field implementation, a mechanism is needed to modify all of the above dependencies. Ideally, this configuration should be managed by an instance administrator through the Invenio app configuration.  
-
+To switch to a different file upload form field implementation, a mechanism is needed to modify all of the above dependencies. We decided to make the new uploader UI a feature toggle, replacing the current FileUploader UI.
+Site admins could enable it via app config (e.g. `invenio.cfg`).
 
 ### Proposed changes
 
-#### Webpack Files UI entrypoint
+#### Feature flag
 
-First, we start by encapsulating logic related to a specific file uploader implementation
-(like the one already used in RDM) into its own Webpack entrypoint. E.g.:
-
-```python
-# invenio_app_rdm/theme/webpack.py
-themes={
-        "semantic-ui": dict(
-            entry={
-+               "invenio-app-rdm-files-rdm": "./js/invenio_app_rdm/deposit/files-rdm.js",
-+               "invenio-app-rdm-files-uppy": "./js/invenio_app_rdm/deposit/files-uppy.js",
-            # ...
-```
-
-This allows the site admins to configure, what implementation should be used, by referencing the corresponding
-entry point name in site config:
+We introduce the folowing feature flag to replace the current deposit form file uploader UI with the new one:
 ```python
 # invenio.cfg
-FILES_UI_ENTRYPOINT = "invenio-app-rdm-files-rdm"
-```
-
-The entrypoint is solely responsible for importing and registering a root React UI component, service and API client for the specific uploader UI implementation. For registration, we leverage the `invenio` global object and add the following `files` API to it:
-```js
-window.invenio.files = {
-    apiClient: filesApiClient,  // Instance of DepositFilesApiClient
-    service: filesService,      // Instance of DepositFilesService
-    uploaderComponent: UploaderComponent,  // React component for uploader field
-  };
-```
-
-A complete Files UI entrypoint would look like:
-```js
-// ./js/invenio_app_rdm/deposit/files-uppy.js
-import { getInputFromDOM } from '@js/invenio_rdm_records';
-import { UppyDepositFileApiClient, UppyDepositFilesService, UppyUploader } from '@inveniosoftware/invenio-files-uppy';
-
-const {apiHeaders, default_transfer_type: defaultTransferType, fileUploadConcurrency} = getInputFromDOM("deposits-config");
-
-if (window.invenio) {
-  const uppyFilesApiClient = new UppyDepositFileApiClient({ apiHeaders }, defaultTransferType);
-  const uppyFilesService = new UppyDepositFilesService(rdmFilesApiClient, fileUploadConcurrency);
-
-  window.invenio.files = {
-    apiClient: uppyFilesApiClient,
-    service: uppyFilesService,
-    uploaderComponent: UppyUploader,
-  };
-}
-```
-
-For this to work, this configurable entrypoint needs to be included into deposit page *before* the
-entrypoint rendering the Deposit app.
-```jinja
-{# deposit.html #}
-{%- block javascript %}
-  {{ super() }}
-+ {{ webpack[ config.FILES_UI_ENTRYPOINT ~ '.js'] }}
-  {{ webpack['invenio-app-rdm-deposit.js'] }}
-{%- endblock %}
+APP_RDM_DEPOSIT_NG_FILES_UI = True
 ```
 
 #### Presentation/resources layer
 
-To let custom Files UI implementations know about available TransferTypes, we need to
+To let the uploader UI implementation know about the TransferTypes available on the back-end, we need to
 pass the information down to the `deposits-config` HTML input by extending the deposit's [get_form_config](https://github.com/inveniosoftware/invenio-app-rdm/blob/master/invenio_app_rdm/records_ui/views/deposits.py#L388) with:
 ```python
 def get_form_config(**kwargs):
@@ -405,19 +351,45 @@ def get_form_config(**kwargs):
     )
 ```
 
-#### Deposit form app
+Additionally, we pass the feature flag value to the deposit app template, using hidden input:
+```jinja
+<!-- deposit.html -->
+  <input type="hidden" name="deposits-use-uppy-ui"
+          value='{{ config.APP_RDM_DEPOSIT_NG_FILES_UI | tojson }}'>
+```
 
-In `DepositFormApp` we drop the concept of always defaulting to `RDMDepositFiles*`.
-We default to using [services registered by Files UI entrypoint from above](https://github.com/oarepo/invenio-rdm-records/commit/a0adca214b279bff0f9ec546709b6fbb5aa5f39f) instead.
+It is then passed down to RDM deposit form app as the `useUppy` prop.
 
-Wherever we rendered the original `FileUploader` React component, we now
-[substitute it with the one from Files UI entrypoint](https://github.com/oarepo/invenio-app-rdm/commit/ca6959c2c3331825c73ced17a95086ccaf917e3e). There's still a possibility to override it, or its sub-component parts using
-`react-overriable`.
+#### UppyDepositFilesService
 
-#### Invenio-RDM-Records module exports
+Current RDM's files service has a concept of managing the upload queue and tracking upload progress.
+For Uppy, this is all managed by its internal state and not needed here. We propose additional
+implementation overriding the `RDMDepositFilesService` where needed.
 
-To allow other Files UI implementation build on available Files Redux store actions, or possibly reusable
-file components (e.g. `FileListTable`), they now need to be exported by the `@js/invenio_rdm_records` module.
+### Files API client extension
+
+To support new transfer types and new uploader UI, `RDMDepositFileApiClient` interface needs to be extended
+by following methods:
+
+- `initializeFileUpload(initializeUploadUrl, filename, **transferOptions**) {` here we added `transferOptions` to properly initialize upload with transferType
+- `getUploadParams(fileContentUrl, file, options)` this is needed for cases when the uploader UI needs to make the upload request on its own (e.g. using XHR) not using
+file API client, thus its Axios instance. For Uppy, this is used by `AWSS3Multipart` plugin code for making a single-part file upload.
+
+### Files Redux store changes
+
+We propose to:
+
+- extract `saveAndFetchDraft` from `uploadFiles` as a separate Redux action (so that uploader UI could dispatch it independently where needed)
+- introduce `initializeFileUpload`, `finalizeUpload` and `getUploadParams` actions to match the new workflow introduced to RDM files service
+
+#### Deposit form apps
+
+- In `DepositFormApp` component we [toggle between files service implementations](https://github.com/oarepo/invenio-rdm-records/pull/1/files)
+  depending on the `useUppy` prop.
+
+- Wherever we rendered the original `FileUploader` React component in the `RDMDepositForm` component, we now
+[toggle between implementations](https://github.com/inveniosoftware/invenio-app-rdm/pull/2994/files#diff-b5e1b966b44dd2d7d0fc9688d8243e176d2a3c1242200e495b2bb4598d60be4bR173-R191)
+ depending on the `useUppy` prop. Overriding mechanism using `react-overriable` isn't affected at this part.
 
 ### Custom Files UI with Uppy
 
@@ -425,19 +397,13 @@ Here we describe integration of [Uppy.io](https://uppy.io/) as a custom Files UI
 use cases regarding reliable multi-part uploads.
 
 <!-- TODO: move under inveniosoftware org? -->
-Uppy integration is being developed as the [`invenio-files-uppy-js`](https://github.com/oarepo/invenio-files-uppy-js/tree/main) NPM package. It provides its [own implementation of `DepositFiles*` services](https://github.com/oarepo/invenio-files-uppy-js/blob/main/src/api/index.js), and the `UppyFileUploader` field component, based off [Uppy Dashboard](https://uppy.io/docs/dashboard/) UI. For the multipart uploading mechanism, it uses
-[AWS S3 Multipart](https://www.npmjs.com/package/@uppy/aws-s3-multipart) package, adapted to match REST APIs designed by this RFC by the [InvenioMultipartUploader](https://github.com/oarepo/invenio-files-uppy-js/blob/main/src/components/UppyUploader/InvenioMultipartUploader.js) Uppy plugin.
+Uppy integration provides `UppyFileUploader` field component that acts as a drop-in replacement of original `FileUploader` component.
+It is based based on [Uppy Dashboard](https://uppy.io/docs/dashboard/) UI. For the multipart uploading mechanism, it uses and extends
+[AWS S3 Multipart](https://www.npmjs.com/package/@uppy/aws-s3-multipart) package, adapted to match REST APIs designed by this RFC and already present in InvenioRDM.
 
 Drag & drop file input with auto-thumbnails, upload progress tracking, upload abortion & retry and status bar is provided out of the box. Files Redux store actions is still being used to manage record files state.
 
 More features & integrations like the remote file sources, image or file metadata editor, could be potentially added to the Dashboard UI later.
-
-#### Usage
-
-Uppy integration could be enabled by registering it from a [Webpack Files UI entrypoint](#webpack-files-ui-entrypoint) and then setting it to be used from the site config:
-```python
-FILES_UI_ENTRYPOINT = "invenio-app-rdm-files-uppy"
-```
 
 #### UI workflow
 
@@ -472,23 +438,15 @@ an internal feature, detailed implementation notes will remain in this RFC
 and in the API documentation.
 
 On front-end:
-- For developers, a documentation on how to build a custom Files UI plugin is probably desirable.
-- For site admins, we need to document the `FILES_UI_ENTRYPOINT` config option.
+- For site admins, we need to document the `APP_RDM_DEPOSIT_NG_FILES_UI` config option.
 
 ## Drawbacks
 
 - A slightly more complicated code.
-- Some files UI components and Redux store actions that were private now need to be exported to allow reuse.
-- Reliance on the global state (`window.invenio.files`) for registering the Files UI, along with an additional Webpack entry point that must be included in a specific order.
-- Need to create a Webpack entrypoint in site's webpack to be able to use any custom Files UI implementations, that are just NPM packages (like the Uppy.io integration above).
 
 ## Alternatives
 
 Having separate API endpoints for handling the use cases above. This RFC provides a cleaner solution.
-
-For the global `window.invenio drawback`, a prop-based approach could potentially be used to pass the correct services to the form app. The `FilesUploader` field could be provided
-via `react-overridable` by mapping the desired component in `mapping.js`. That would avoid the need for an extra webpack entrypoint and using the global state altogether. However,
-it remains unclear how site administrators could easily configure the correct services server-side (e.g., DepositFilesService, DepositFilesAPIClient), as they are purely JavaScript objects.
 
 ## Unresolved questions
 
