@@ -396,19 +396,28 @@ We propose to:
 Here we describe integration of [Uppy.io](https://uppy.io/) as a custom Files UI implementation addressing
 use cases regarding reliable multi-part uploads.
 
-<!-- TODO: move under inveniosoftware org? -->
 Uppy integration provides `UppyFileUploader` field component that acts as a drop-in replacement of original `FileUploader` component.
-It is based based on [Uppy Dashboard](https://uppy.io/docs/dashboard/) UI. For the multipart uploading mechanism, it uses and extends
-[AWS S3 Multipart](https://www.npmjs.com/package/@uppy/aws-s3-multipart) package, adapted to match REST APIs designed by this RFC and already present in InvenioRDM.
+- It is based based on the [Uppy Dashboard](https://uppy.io/docs/dashboard/) UI.
+- It uses and extends [AWS S3 Multipart](https://www.npmjs.com/package/@uppy/aws-s3-multipart), adapted to match REST APIs designed by this RFC and already present in InvenioRDM to manage file uploads.
+- It syncs relevant state changes with original Files Redux store
 
-Drag & drop file input with auto-thumbnails, upload progress tracking, upload abortion & retry and status bar is provided out of the box. Files Redux store actions is still being used to manage record files state.
+UppyFileUploader features:
+- Drag & drop file input
+- Auto-thumbnails of dropped files
+- Progress tracking
+- Upload abortion & retry
+- Image editor (crop/rotate before upload)
+- FileListTable (reused from original RDM uploader)
+- Folder upload (for supported browsers, select folder to upload files from)
+- Localization (locale synced with i18next.language)
+- [WIP] Calculate part checksums using hash-wasm (requires enabling web-assembly in CSP)
+- [WIP] Pick and import individual files from previous record version (using custom Uppy source fetcher plugin)
 
 More features & integrations like the remote file sources, image or file metadata editor, could be potentially added to the Dashboard UI later.
 
 #### UI workflow
 
 Default dashboard state:
-![Screenshot 2025-02-13 at 8 57 20](https://github.com/user-attachments/assets/85319625-7510-4482-b314-64eac835fc73)
 
 Files chosen for upload:
 ![Screenshot 2025-02-13 at 9 07 20](https://github.com/user-attachments/assets/eb1810d5-fd27-4612-9de7-ad028c78c1ca)
