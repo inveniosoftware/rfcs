@@ -245,22 +245,41 @@ Official mods: https://github.com/reactjs/react-codemod/tree/master/transforms
 
 #### ESLint Configuration
 
-Set-up v2.0 config for React 18 migration:
+Create a separate React 18 config to enable gradual migration:
 
-```javascript
-module.exports = {
-  rules: {
-    'react/react-in-jsx-scope': 'off',
-    'no-restricted-imports': ['error', {
-      paths: [
-        { name: 'enzyme-adapter-react-16', message: 'Remove, use @cfaester/enzyme-adapter-react-18' }
-      ]
-    }],
-    'react-hooks/rules-of-hooks': 'error',
-    'react-hooks/exhaustive-deps': 'warn',
+**File: `configs/react18.yaml`**
+```yaml
+extends:
+  - ./main.yaml
+
+rules:
+  react/react-in-jsx-scope: off
+  no-restricted-imports:
+    - error
+    - paths:
+        - name: enzyme-adapter-react-16
+          message: "Remove, use @cfaester/enzyme-adapter-react-18"
+  react-hooks/rules-of-hooks: error
+  react-hooks/exhaustive-deps: warn
+```
+
+**Package.json exports:**
+```json
+{
+  "exports": {
+    ".": "./configs/main.yaml",
+    "./react18": "./configs/react18.yaml"
   }
 }
 ```
+
+**Migration path:**
+| Phase | Config | Use Case |
+|-------|--------|----------|
+| Legacy | `@inveniosoftware/eslint-config-invenio` | React 16 support (existing projects) |
+| Migration | `@inveniosoftware/eslint-config-invenio/react18` | React 18 migration (opt-in per package) |
+
+This allows packages to migrate individually without breaking existing React 16 consumers.
 
 #### Unify test & lint tooling
 
