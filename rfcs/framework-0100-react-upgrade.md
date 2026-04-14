@@ -414,12 +414,14 @@ These are dependencies of most other front-end packages:
 
 | Package | Changes |
 |---------|---------|
-| `react-overridable` | React 18.3, Enzyme adapter, JavaScript |
+| `react-overridable` | React 18.3 (dev), classic JSX transform, backward compatible with 16/17 |
 | `react-invenio-forms` | React 18.3, Formik ^2.1.0, Enzyme adapter |
 | `react-searchkit` | React 18.3, Enzyme adapter, JavaScript |
 
+**Note on react-overridable implementation:** PR https://github.com/indico/react-overridable/pull/36 uses a **non-breaking approach** - peer deps remain `>=16.14.0`, classic JSX transform maintains React 16-18 compatibility.
+
 **For each of these:**
-1. Install `@cfaester/enzyme-adapter-react-18`
+1. Install `@cfaester/enzyme-adapter-react-18@^0.8.0`
 2. Update test configuration
 3. Bump React packages to v18.3.x
 4. Apply available codemods to establish baseline
