@@ -288,6 +288,8 @@ At the root of each package, provide:
 - `run-js-tests.sh` to run any Jest tests provided in package
 - `run-js-lint.sh` to lint any JS code against `eslint-config-invenio` rules
 
+**Implementation:** PR https://github.com/inveniosoftware/workflows/pull/26 adds CI support for `run-js-tests.sh` - the workflow attempts to execute the script and falls back to `npm test` if not present, maintaining backward compatibility.
+
 
 #### StrictMode Compliance
 
