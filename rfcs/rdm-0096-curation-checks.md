@@ -2,7 +2,7 @@ RFC: Automated curation checks
 ===
 
 - Start Date: 2024-12-16
-- RFC PR: [#93](https://github.com/inveniosoftware/rfcs/pull/93)
+- RFC PR: [#96](https://github.com/inveniosoftware/rfcs/pull/96)
 - Authors: Alex Ioannidis
 
 # Summary
@@ -58,35 +58,24 @@ class Check:
     id: str
 
     # Display fields
-    name: str
+    title: str
     description: str
 
-    params: marshmallow.Schema
+    # Validate a CheckConfig's params for this check
+    def validate_config(self, config): pass
 
-    # If `False` the check will run as a Celery task
-    sync: bool = True
-
-    # Main logic of the check
-    def run(self, record: Record): pass
-
-    # External or background checks can be cancelled/retried
-    can_cancel: bool = False
-    def cancel(self): pass
-
-    can_retry: bool = False
-    def retry(self): pass
-
-    # External checks might need their status to be "refreshed"
-    can_refresh: bool = False
-    def refresh(self): pass
-
-    # External checks need a callback to update their status/result
-    can_update: bool = False
-    def update(self, status: str, result: dict): pass
+    # Main logic of the check; returns a result object with `.to_dict()`
+    def run(self, record: Record, config: CheckConfig): pass
 
 
-# Glbal checks registry
-type ChecksRegistry = dict[str, Check]
+# Checks are registered (by class) in a global registry keyed by `id`.
+# NOTE: In the current implementation, checks run synchronously only. The external/background
+# lifecycle (sync flag, cancel/retry/refresh/update callbacks) is not yet
+# implemented.
+class ChecksRegistry:
+    def register(self, check_cls): ...
+    def get(self, check_id) -> type[Check]: ...
+    def get_all(self) -> dict[str, type[Check]]: ...
 ```
 
 ### Check Config
@@ -100,10 +89,9 @@ class CheckConfig(Model):
 
     id: PK[UUID]
     community_id: FK[Community.id]
-    check_id: Enum[Check.id]
+    check_id: str  # validated against the checks registry
     params: dict
-    severity: Enum["info", "warn", "error"]
-    order: int
+    severity: Enum[Severity]  # stored as "I"/"W"/"F" (INFO/WARN/FAIL)
     enabled: bool
 ```
 
@@ -126,7 +114,11 @@ class CheckRun(Model):
     revision_id: int
 
     # These keep track of the execution state of the check
-    status: Enum["pending", "done", "error"]
+    status: Enum[CheckRunStatus]  # P/R/C/E (PENDING/RUNNING/COMPLETED/ERROR);
+                                  # execution is synchronous, so in practice only
+                                  # COMPLETED is written (failures are logged, no run persisted)
+    start_time: datetime
+    end_time: datetime
     state: dict
     result: dict
 ```
@@ -141,6 +133,24 @@ The schema loosely follows that of the [Language Server Protocol](https://micros
 - Actions: a suggestion for how to fix the problem (e.g. set a field's value)
 
 A client can interpret these results and display them to the user, and potentially even take actions.
+
+The LSP-inspired `diagnostics`/`actions` shape below is the original design intent. The implementation is simpler: the result dict carries an `errors` array of flat entries, and the record-service component injects a per-error `context`:
+
+```json
+{
+  "errors": [
+    {
+      "field": "metadata.rights",
+      "messages": ["Creative Commons license is required for datasets."],
+      "description": "...",
+      "severity": "error",
+      "context": {"community": "<community_id>"}
+    }
+  ]
+}
+```
+
+The richer `diagnostics`/`actions`/`values` model remains a future direction:
 
 ```json
 {
@@ -199,8 +209,8 @@ In all of the above workflows the `CheckRun` rows must be created/modified and p
 ### Trigger points
 
 - **Draft Review request**: When a draft submitted to a community, the configured curation checks are triggered to run automatically.
-- **Record Inclusion request**: Published records submitted to a community undergo the same checks as drafts. Any detected issues are logged, and feedback is provided to both submitters and curators. Re-editing challenges are managed by ensuring the system tracks changes and runs checks incrementally on modified fields.
-- **Record Updates/Edits**: Updates to records in a community trigger checks on the modified fields or affected sections of the record. This ensures that all updates comply with the community's quality standards without reprocessing the entire record.
+- **Record Inclusion request**: Published records submitted to a community undergo the same checks as drafts. Any detected issues are logged, and feedback is provided to both submitters and curators. On submission the check run is recorded against the draft if one exists (otherwise the published record, via `is_draft=record.has_draft`); on re-edit the full set of configured checks is re-run over the whole record (the implementation does not track changes or run checks incrementally on modified fields).
+- **Record Updates/Edits**: Updates to records in a community trigger the `ChecksComponent`, which re-runs all configured checks over the whole record on each draft update/edit. (Field-scoped or incremental re-checking is a possible future optimization but is not implemented; each update reprocesses the full record.)
 - (Out of scope of this RFC) **Bulk Runs**: Bulk runs allow curators to apply curation checks to multiple records
   at once. This feature is designed for efficiency, providing aggregated diagnostics and
   actions to streamline resolution. It is particularly useful for retroactive checks or
@@ -218,11 +228,34 @@ In all of the above workflows the `CheckRun` rows must be created/modified and p
 
 ## Service Layer
 
-> TODO: Describe the service layer
+> The service layer is only partially implemented:
+> - **Runtime API**: `ChecksAPI` provides `get_runs(record, is_draft=None)`,
+>   `get_configs(community_ids)`, and `run_check(config, record, uow, is_draft=None)`.
+>   `run_check` instantiates the check class and calls `check_cls().run(record, config)`,
+>   creating/updating a `CheckRun`. This is what `ChecksComponent` and the overridden
+>   `CommunitySubmission`/`CommunityInclusion` request actions call.
+> - **Config service**: a `checks-config` service (`CheckConfigService`) and config
+>   (`ChecksConfigServiceConfig`, with `CheckConfigSchema`) exist, but all CRUD methods
+>   currently raise `NotImplementedError`.
+> - **Permissions**: `CheckConfigPermissionPolicy` and `CheckRunPermissionPolicy`
+>   currently grant every action only to `Administration()` and `SystemProcess()`
+>   (run policy adds `can_stop`). Community-manager/curator access is not yet wired up.
+>
+> TODO: Complete the config service CRUD and broaden permissions to community managers.
 
 ## Presentation Layer
 
 ### REST API
+
+> NOTE (implementation status): The dedicated REST endpoints described below are not yet
+> implemented. invenio-checks exposes no flask-resources resources and registers
+> no `/checks` routes (its only blueprint, `create_ui_blueprint`, is empty). The
+> `checks-config` service exists but is a stub (all CRUD methods raise
+> NotImplementedError); check configs are created directly in the `CheckConfig`
+> table (e.g. via fixtures/admin). Check results are surfaced to clients by
+> injecting them into the existing record/draft service response `errors` array
+> (see `ChecksComponent`), and server-rendered request pages read runs directly
+> via `ChecksAPI.get_runs()`. The endpoints below remain the target design.
 
 #### Create a community check config
 
@@ -396,6 +429,8 @@ HTTP/1.1 200 OK
 
 ### UI Mockups
 
+> The mockups below use Zenodo's EU Open Research Repository as a running example. This is a community that collects research outputs funded by the European Commission (Horizon Europe and earlier programmes), with a child community (a "subcommunity") per funded project. The same flow applies to any InvenioRDM community that configures checks; the EU community appears here only because it is a concrete, deployed instance.
+
 **Draft review submission flow**
 
 > [name=Karolina Przerwa] Are we planning to run checks also on records which are not inside a community? To encourage filling metadata
@@ -409,11 +444,11 @@ HTTP/1.1 200 OK
 
 1. After selecting a community, filling in metadata and submit draft for review:
 
-![](https://codimd.web.cern.ch/uploads/upload_d71151f986248f956c9b1394421d7a8e.png)
+![Request "Conversation" tab showing a "Checks in progress" overview box (one check passed, others pending)](0096/request-checks-in-progress.png)
 
 2. After checks have finished running
 
-![](https://codimd.web.cern.ch/uploads/upload_42870ed90f67da065f9b9c937f6a2ced.png)
+![Request overview box showing "Some checks failed", with "jump to error" links per failed check](0096/request-checks-failed.png)
 
 2a. Checks tab shows details for each check run
 
@@ -422,22 +457,22 @@ HTTP/1.1 200 OK
 
 3. Going back to the deposit form to see check results
 
-![](https://codimd.web.cern.ch/uploads/upload_ade817fe6d0c93c4237c583d6397ef82.png)
+![Deposit form with a "Checks" sidebar box and inline links jumping to the offending fields](0096/deposit-form-check-errors.png)
 
 4. After editing fields that were affected by checks (but not clicking "Save draft" yet):
 
-![](https://codimd.web.cern.ch/uploads/upload_9965f96584798c972c9f36547170b69a.png)
+![Deposit form with addressed checks struck through as fields are edited (before saving)](0096/deposit-form-checks-addressed.png)
 
 5. After clicking "Save draft" (note the "Checks" sidebar box):
 
 > [name=Karolina Przerwa] Checks are more important than "Delete", should be placed above the button
 > [name=Alex] Agree :+1:, has been fixed in the latest mockups
 
-![](https://codimd.web.cern.ch/uploads/upload_2abeb5743421c1d09b257eeb07bdff3a.png)
+![Deposit form after saving the draft, with checks re-run and the "Checks" sidebar box updated](0096/deposit-form-checks-rerun.png)
 
 6. All required checks passing:
 
-![](https://codimd.web.cern.ch/uploads/upload_0afadf058a48e5e2ec6d1054a182a3b6.png)
+![Request overview box showing "Required checks pass"](0096/request-checks-passing.png)
 
 
 ## Deposit form changes
@@ -448,7 +483,7 @@ HTTP/1.1 200 OK
     - We need a mapping/listing of what field paths are under which section, e.g.:
         - Basic info: `pids.*`, `metadata.creators`, `metadata.title`, `metadata.resource_type`, etc.
 - Each section has a summary of its errors/warnings
-- Each field has to be able to display errors of different "severity" (fail, warn, info)
+- Each field has to be able to display errors of different "severity" (error, warning, info)
     - This requires expanding the schema of the `errors` field of draft REST API responses to add a `severity` field
 - Displayed errors that are coming from community checks, should have contextual info that links to the "Checks" tab
     - This requires expanding the schema of the `errors` field of draft REST API responses... `ui_context_icon` vs `community`
@@ -459,33 +494,24 @@ HTTP/1.1 200 OK
        {
            "field": "metadata.funding",
            "messages": ["At least one EC-funded award should be present."],
-           "severity": "info",  // failure, warning, info
+           "severity": "info",  // info, warning, error
            "context": {
                "community": "<community_id>",
-               "check": "<check_id>",
            }
        },
        {
            "field": "metadata.creators",
            "messages": ["Authors must use persistent identifiers (ORCiD, GND, etc.). 'Nielse, Lars Holm' and 'Ioannidis, Alex' are missing ORCiDs."],
-           "severity": "warning",  // failure, warning, info
+           "severity": "warning",  // info, warning, error
            "context": {
                "community": "<community_id>",
-               "check": "<check_id>",
            }
        }
-   ],
-
-   "ui": {
-      "communities": {
-          "<community_id>": {...slug, title, etc...},
-      },
-      "checks": {
-          "<check_id>": {...title, links, description, etc...},
-      }
-   }
+   ]
 }
 ```
+
+> Note (implementation status): the top-level `ui` lookup block (`communities`/`checks`) originally proposed here was not implemented, and each error's `context` carries only `community` (no `check`). Errors are returned as a flat list where each item has `field`, `messages`, `description`, `severity`, and `context: {"community": <id>}`, attached by `ChecksComponent._extract_run_errors`. The deposit form's `deserializeErrors` reads only `field`, `messages`, `severity`, and `description`.
 
 **Configuring checks as a community manager/curator**
 
@@ -496,6 +522,8 @@ HTTP/1.1 200 OK
 > TODO: See if necessary, and add mockups
 
 # Example
+
+> The `AuthorPIDs` and `FAIRToolScore` sketches below illustrate the original design API (a `name` field, a marshmallow `params` schema, `run(self, record)`, and the external/async `sync`/`refresh` surface). The implemented `Check` API differs (see [Datamodel](#check) above) and the async/external surface is not implemented. For the check actually deployed on Zenodo, see *Check - Metadata rules* below.
 
 ## Check - Author identifiers
 
@@ -569,6 +597,80 @@ class FAIRToolScore(Check):
             diagnostics = result[...]
         return {"diagnostics": diagnostics, "actions": []}
 ```
+
+## Check - Metadata rules (as deployed on Zenodo)
+
+The `metadata` check is config-driven rather than a bespoke `Check` subclass per rule: a single `Check` (`check_id = "metadata"`) interprets a declarative `rules` list stored in `CheckConfig.params`. Each rule has an optional `condition` (when the rule applies) and a list of `checks` (what must hold), built from `comparison`, `list`, `logical`, and `field` expressions. This is the concrete realization of the "Metadata check" container discussed in Lars' comments under [Unresolved questions](#unresolved-questions).
+
+As a deployed example, Zenodo runs this check on its EU Open Research Repository (community slug `eu`), which collects research outputs funded by the European Commission. The community requires submissions to declare an EU grant and to use open licensing; the per-project communities nested beneath it (subcommunities) additionally require that project's specific grant. The following excerpt is from Zenodo's `scripts/ec_create_checks.py`:
+
+```python
+EU_RULES = {
+    "rules": [
+        {
+            "id": "funding:eu",
+            "title": "EU Funding",
+            "message": "Submissions must have a grant/award from the European Commission",
+            "level": "error",
+            "checks": [
+                {
+                    "type": "list",
+                    "operator": "any",
+                    "path": "metadata.funding",
+                    "predicate": {
+                        "type": "comparison",
+                        "left": {"type": "field", "path": "funder.id"},
+                        "operator": "==",
+                        "right": "00k4n6c32",  # European Commission
+                    },
+                }
+            ],
+        },
+        {
+            "id": "creators:identifier",
+            "title": "Creator Identifiers",
+            "message": "All creators should have a persistent identifier (e.g. an ORCID)",
+            "level": "info",
+            "condition": {  # only applies if creators exist
+                "type": "list", "operator": "exists",
+                "path": "metadata.creators", "predicate": {},
+            },
+            "checks": [
+                {
+                    "type": "list",
+                    "operator": "all",
+                    "path": "metadata.creators",
+                    "predicate": {
+                        "type": "logical",
+                        "operator": "and",
+                        "expressions": [
+                            {"type": "field", "path": "person_or_org.identifiers"},
+                            {
+                                "type": "list", "operator": "any",
+                                "path": "person_or_org.identifiers",
+                                "predicate": {"type": "field", "path": "identifier"},
+                            },
+                        ],
+                    },
+                }
+            ],
+        },
+        # ... journal-info and per-resource-type license rules omitted for brevity
+    ]
+}
+```
+
+A second built-in check, `check_id = "file_formats"`, takes a flat params dict:
+
+```python
+FILE_FORMAT_CONFIG = {
+    "closed_format_description": "Using closed or proprietary formats hinders reusability ...",
+}
+```
+
+Per-project EU subcommunities get a tailored `metadata` config generated from a template: the `funding:project` rule's award id and the message/description placeholders are filled from the subcommunity's award when its inclusion request is accepted.
+
+Because the config service is currently a stub (see [Service Layer](#service-layer)), these `CheckConfig` rows are created directly against the database: for the EU community via the `ec_create_checks.py` maintenance script, and for subcommunities from the subcommunity-request handler. The `severity` of all currently deployed configs is `INFO`, while each rule carries its own `level` (`error` or `info`) that sets the severity of the emitted result, and an `error`-level result is what blocks publishing.
 
 ## Workflow
 
@@ -653,7 +755,7 @@ In general, extending the existing model to support "polymorphic" behavior over 
 
 There's a one central part missing I think, and related to this mockup:
 
-![](https://codimd.web.cern.ch/uploads/upload_5715877f40370c53e660040c6a0a01df.png)
+![Proposed "Checks" tab in a review request, listing each metadata rule and its explanation](0096/request-checks-tab.png)
 
 In my mind we have in this interface
 
@@ -669,7 +771,7 @@ The community will have defined a set of metadata **RULES** (this is not the sam
 
 Here's how the rule could be created:
 
-![](https://codimd.web.cern.ch/uploads/upload_459269db503df819e5e7288529c04463.png)
+![Mockup of an "Add check" form for creating a metadata rule (preconditions, checks, action, severity)](0096/add-check-form.png)
 
 Overall I think the conceptual model you have proposed will work, but you have checks of e.g. funding info/author each as a separate check, where I see that as a combined metadata check, that checks against the metadata rules.
 
@@ -714,7 +816,3 @@ Either way, we'll need some sort of easy way to create, store and apply metadata
 ### Karolina's comments 6th of Feb
 
 I've submitted them in between the text
-
-# Resources/Timeline
-
-Zenodo team: 18 PMs over 6 weeks
