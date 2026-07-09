@@ -1,5 +1,5 @@
 - Start Date: 2026-02-09
-- RFC PR: [#109](https://github.com/inveniosoftware/rfcs/pull/109/)
+- RFC PR: [#111](https://github.com/inveniosoftware/rfcs/pull/111/)
 - Authors: Guillaume Viger
 
 # Membership request from users to join a community
@@ -42,20 +42,20 @@ Community managers (members with the "Owner" or "Manager" roles), can change the
 
 The membership policy can be set in the "Privileges" section of the community's "Settings" tab. "Open" means the community is open to membership requests by users and "Closed" (the default) means it isn't. Only invited users can become part of the community in that latter scenario.
 
-![](./0109/membership_policy_on_privileges_section_on_community_settings_tab.png)
+![](./0111/membership_policy_on_privileges_section_on_community_settings_tab.png)
 
 
 ### Request membership to a community (request flow)
 
 A user can only request membership to a community that has enabled it as per above and only if the user is not a member of the community already. The community header will have a "Request Membership" button to click to display a modal that will start the process. Further below we describe what displays instead when the current user has already submitted a request or has already been invited.
 
-![](./0109/button_to_request_membership_on_community_header.png)
+![](./0111/button_to_request_membership_on_community_header.png)
 
 This button appears across all (public) community tabs.
 
 The displayed modal shows a textbox to write a message to the managers along with the button to truly create the request to join the community.
 
-![](./0109/modal_to_request_membership_on_community_page.png)
+![](./0111/modal_to_request_membership_on_community_page.png)
 
 An email is sent to the community managers to alert them of the request.
 
@@ -65,21 +65,21 @@ An email is sent to the community managers to alert them of the request.
 The community header will show something different when waiting for a review.
 If the user has already submitted a request or has already been invited, then that button will be a "Membership Discussion" link to the discussion page of the request.
 
-![](./0109/link_to_membership_discussion_on_records_page.png)
+![](./0111/link_to_membership_discussion_on_records_page.png)
 
 Note that a user that has already submitted a membership request to a community cannot be invited to that community. Only one such member request (membership request or invitation) can exist at a time.
 
-![](./0109/cant_invite_user_that_already_requested.png)
+![](./0111/cant_invite_user_that_already_requested.png)
 
 This button appears across all (public) community tabs by passing the means to fetch the existing request (id) if any for a not-activated-yet member in an `app_context_processor`. This saves us from modifying the views for every single community page and especially the records tab view (`community_detail` view) that is NOT defined in invenio-communities but in invenio-app-rdm.
 
 The membership request will also be accessible from a user's dashboard under the "Requests" tab/page:
 
-![](./0109/membership_requests_on_user_dashboard_requests_page.png)
+![](./0111/membership_requests_on_user_dashboard_requests_page.png)
 
 On the above listing and on the request page in the requester's dashboard, there is a "Cancel" button to display a modal to cancel the request.
 
-![](./0109/button_to_cancel_on_request_discussion_page.png)
+![](./0111/button_to_cancel_on_request_discussion_page.png)
 
 Notifications are sent to the community managers for this action too.
 
@@ -87,7 +87,7 @@ Notifications are sent to the community managers for this action too.
 
 For community managers, the submitted membership requests appear on the "Members" tab under the "Membership Requests" section/page:
 
-![](./0109/membership_requests_on_membership_requests_section_on_community_members_tab.png)
+![](./0111/membership_requests_on_membership_requests_section_on_community_members_tab.png)
 
 They do not appear under the "Requests" tab.
 
@@ -96,7 +96,7 @@ The role of the requester can also be changed from the dropdown.
 
 The decision can be made on that listing or on the request's page. Like other requests, clicking "Accept/Decline" displays a modal to allow a message to be submitted with the decision. The requester is notified of the decision via the notification system as usual.
 
-![](./0109/membership_request_on_community_members_tab.png)
+![](./0111/membership_request_on_community_members_tab.png)
 
 
 The "Membership discussion" button is then removed from the community header when the request is accepted.
