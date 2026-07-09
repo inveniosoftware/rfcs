@@ -14,9 +14,9 @@ As an Invenio(RDM) developer (operator, contributor or maintainer), I want to kn
 - what Python features I can use or not, so that I am effective at my work.
 - what Python deprecations must be supported via a compatibility layer, so that Invenio(RDM) can be stable across Python versions.
 - which deprecations in these compatibility layers can be dropped completely and when, in order to keep the maintenance burden low.
-- what `requires-python =` (`pyproject.toml`) or `python_requires =` (`setup.cfg`) constraints to apply to which module/application.
+- what `requires-python =` (`pyproject.toml`) or similar constraints to apply to which module/application.
 - what versions of Python should be used for the continuous integration tests, in order to test well but be efficient with test runners.
-- how to deal with yearly release cadence of the Python language, in order to stay relevant (secure/performant).
+- how to deal with yearly release cadence of the Python language, in order to stay relevant (secure/performant) but avoid churn.
 
 As an InvenioRDM instance operator, I want to know which version of Python I can use, so that I can setup my environment and know what support I can expect from the community.
 
@@ -36,10 +36,10 @@ As an InvenioRDM instance operator, I want to know which version of Python I can
 - All Invenio and InvenioRDM modules are compatible with the anointed version for its lifespan.
 - That lifespan starts on a major InvenioRDM release and ends when the last InvenioRDM release that had it as its anointed version is retired (reached end-of-life).
 - Invenio modules and InvenioRDM instances *may* be compatible with other versions of Python. This policy approach focuses on establishing inclusive guarantees as opposed to exclusive ones.
-    * by modules adopting/dropping Python version features, some versions will naturally be excluded, but this is implicit
-- Overtime, this policy of one anointed Python version will be used for modules in the wider Invenio ecosystem(not just InvenioRDM one) in order to simplify processes across all modules.
+    * by modules adopting/dropping Python version features, some versions will naturally be excluded
+- Overtime, this policy of one anointed Python version will be used for modules in the wider Invenio ecosystem (not just InvenioRDM one) in order to simplify processes across all modules.
 
-The rest of this document details these core policy points and their consequences in terms of continuous intergration, the release of new Python versions, explicit requirement markers, transition periods, etc.
+The rest of this document details these core policy points and their consequences in terms of continuous integration, the release of new Python versions, explicit requirement markers, transition periods, etc.
 
 
 ## Detailed design
@@ -126,11 +126,24 @@ Cases where different anointed versions overlap are covered in the "Transitions"
 
 ### Meta markers (requires-python / python_requires and co.)
 
-`requires-python` (`pyproject.toml`) or `python_requires` (`setup.cfg`) *should not* be present in any module anymore.
+`requires-python` (`pyproject.toml`) or equivalent *should* be present in modules. It should at least reflect the smallest official Python version. Ideally it would reflect the minimum required Python version for the module.
 
-The policy approach is an affirmative one as opposed to a negative one. These markers may exclude versions that a module could stil be compatible with. They also become a burden to maintain whenever official versions change. The trade-off is that a developer who wants to use a non-anointed version will have to *run* the module tests/application to know if it is compatible.
+If the smallest official Python version is 3.11, then something of the form:
 
-Historically, the `classifiers` meta-marker has not been used to indicate which Python version any module is compatible with. As such we keep it that way, to also save on maintenance effort.
+```toml
+# pyproject.toml
+[project]
+# ...
+requires-python = ">=3.11"
+```
+
+is expected. If features specific to Python 3.14 are used, then it would ideally be `requires-python = ">=3.14"`.
+Because of the very large number of InvenioRDM-specific and InvenioRDM-ecosystem modules, this leniency is established.
+
+The policy skews towards an affirmative approach as opposed to a negative one. These markers may exclude versions that a module could stil be compatible with if the minimum anointed version was chosen. The markers have a cost to their maintenance: whenever official versions change, they have to change. Adding more specific constraints can become an additional burden. If a developer wants to use a non-anointed Python version (within the `requires-python` range), they will have to attempt to run or install the code under that version to know if it is compatible.
+
+Historically, the `classifiers` meta-marker has not accurately reflected which Python version any module is compatible with. As such we keep it that way to also save on maintenance effort. Removal of any minor Python versions is preferred
+in fact.
 
 ### Docker images
 
@@ -140,9 +153,9 @@ This is a core objective of this support policy: produce an Invenio(RDM) docker 
 
 ### Transitions
 
-Major versions of InvenioRDM share a period of time when both are supported (see [RDM support policy](https://inveniordm.docs.cern.ch/releases/maintenance-policy/)), and as such, there will come a time when two different anointed versions are supported. In these cases, both are part of the CI test grid.
+Two sequential major versions of InvenioRDM share a period of time when both are supported (see [RDM support policy](https://inveniordm.docs.cern.ch/releases/maintenance-policy/)), and as such, there will come a time when two different anointed versions are supported. In these cases, both are part of the CI test grid.
 
-The decision to anoint a new Python version is made during development, so it will show up in the test grid before an official release. However, this version will usually be one that is or has already been in the test grid, so typically doesn't bring new issues.
+The decision to anoint a new Python version is made during development, so it will show up in the test grid before an official release. However, this version will usually be one that is or has already been in the test grid, so this typically doesn't bring new concerns.
 
 Semver leaves room for debate about the version assignment implication of dropping and adopting language versions. For us, changes in anointed version are only done on major releases, so the major bump covers the change of supported language. In between those (in development), if supporting a new language version requires additions, a module should be minor bumped. If not, support can be claimed and not result in a version change. When an official version has reached its end-of-life and no changes were needed, a version change can also be skipped.
 
@@ -150,10 +163,10 @@ Semver leaves room for debate about the version assignment implication of droppi
 
 | Timeline/Context | Module | Python versions in test grid | Reasoning |
 | ---------------- | ------ | ---------------------------- | --------- |
-| InvenioRDMv17 in development<br> with 3.17 as upcoming new anointed version | invenio-app-rdm | [3.14, 3.17] | InvenioRDM-specific module<br> active anointed version is 3.14<br> highest official version is 3.17 |
+| InvenioRDMv17 in development<br> with 3.17 as upcoming new anointed version | invenio-app-rdm | [3.14, 3.17] | InvenioRDM-specific module<br> active anointed version is 3.14<br> upcoming anointed version is 3.17 |
 | ... | ... | ... | ... |
-| 5 months out from InvenioRDMv17 release<br> Python 3.18 out | invenio-app-rdm | [3.14, 3.17]<br> (no 3.18 because  optional) | InvenioRDM-specific module<br> active anointed versions are 3.14 + 3.17 |
-| 5 months out from InvenioRDMv17 release<br> Python 3.18 out | invenio-app | [3.13, 3.14, 3.17, 3.18] (3.18 because optional) | InvenioRDM-ecosystem module<br> active anointed versions are 3.14 + 3.17<br> lowest and highest official versions are 3.13 and 3.18<br> |
+| 5 months after InvenioRDMv17 release<br> Python 3.18 out | invenio-app-rdm | [3.14, 3.17]<br> (no 3.18 because  optional) | InvenioRDM-specific module<br> active anointed versions are 3.14 + 3.17 |
+| 5 months after InvenioRDMv17 release<br> Python 3.18 out | invenio-app | [3.13, 3.14, 3.17, 3.18] (3.18 because optional) | InvenioRDM-ecosystem module<br> active anointed versions are 3.14 + 3.17<br> lowest and highest official versions are 3.13 and 3.18<br> |
 
 
 ## How we teach this
@@ -167,9 +180,9 @@ By having the appropriate workflows, this will also be conveyed to developers.
 
 This lays out potentially long support times for some Python versions (couple years) which means accounting for deprecations for a long time and sometimes not using helpful newer features. But, we get stability and set ourselves up to work within our available development resources in exchange.
 
-By not being explicit about versions that are not supported, we don't make it "statically" known to adopters which versions won't work. Multiple independent adopters would potentially perform same work to come to same conclusions. This can be mitigated by mentioning in the release notes if it is already known that other Python versions will not work.
+By not enforcing the anointed version as a `requires-python` (or equivalent) constraint, we don't make it "statically" fully known to adopters which versions won't work. Multiple independent adopters would potentially perform same work to come to same conclusions. This can be mitigated by mentioning in the release notes if it is already known that other Python versions will not work. The choice to do so has the advantage of not cutting off modules from being used by still valid official Python versions.
 
-There is ambiguity as to how/when to decide to add a new official version to the CI, and when in development to choose the new anointed version. It doesn't remove the need for discussion around this topic. A posited rule of thumb is to revise the anointed version every 3 years or so which still leaves the active one wtih a lifespan close to 4 years. A positive take on this lack of determinism is that this approach is flexible to future contexts.
+There is ambiguity as to how/when to decide to add a new official version to the CI, and when in development to choose the new anointed version. The policy doesn't remove the need for discussion around this topic. A posited rule of thumb is to touch base among maintainers and community partners at telecon once a year around November-December (after new Python version out). Aiming around keeping the same anointed version for 3 years or so is respectable. A positive take on this lack of determinism is that this approach is flexible to future contexts.
 
 Other drawbacks were inlined.
 
@@ -187,10 +200,10 @@ Communicating the change should be done sooner rather than later, since a period
 
 ## Implied action items
 
-- Removing `requires-python` and such from modules
-- Removing `classifiers` containing Python versions if any
+- Updating `requires-python` and such from modules
+- Removing `classifiers` containing Python versions if any at will
 - Changing the CI test grids and potentially creating a separate test workflow for InvenioRDM-specific module
-- Settling on Python 3.14 for InvenioRDMv14 to start the ball.
+- Settling on Python 3.14 for InvenioRDMv14 to start the policy.
 
 
 ## Resources/Timeline
